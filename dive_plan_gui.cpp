@@ -732,7 +732,7 @@ void DivePlanWindow::configureSplitter(
     }
     
     // Connect the splitter movement signal
-    connect(splitter, SIGNAL(splitterMoved(int, int)), this, SLOT(onSplitterMoved(int, int)));
+    connect(splitter, &QSplitter::splitterMoved, this, &DivePlanWindow::onSplitterMoved);
     
     // Add to tracked splitters
     SplitterConfig config;

@@ -71,14 +71,14 @@ void GasListWindow::setupUI() {
     bestGasDepthEdit->setAlignment(Qt::AlignCenter);
 
     // Connect return key press to trigger add best gas
-    connect(bestGasDepthEdit, SIGNAL(returnPressed()), this, SLOT(addBestGas()));
+    connect(bestGasDepthEdit, &QLineEdit::returnPressed, this, &GasListWindow::addBestGas);
     topLayout->addWidget(bestGasDepthEdit);
     
     // Add spacer to push controls to the left
     topLayout->addStretch();
     
     // Connect add button to create best gas
-    connect(addButton, SIGNAL(clicked()), this, SLOT(addBestGas()));
+    connect(addButton, &QPushButton::clicked, this, &GasListWindow::addBestGas);
     
     // Create gas table
     gasTable = new QTableWidget(0, NUM_COLUMNS, this);
