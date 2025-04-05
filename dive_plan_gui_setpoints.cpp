@@ -177,7 +177,7 @@ void DivePlanWindow::refreshSetpointsTable() {
         
         // Delete button (except for the last row if there's only one)
         if (m_divePlan->m_setPoints.nbOfSetPoints() > 1 || i < (int) m_divePlan->m_setPoints.nbOfSetPoints() - 1) {
-            setpointsTable->setCellWidget(i, SP_COL_DELETE, createDeleteButtonWidget(i, true));
+            setpointsTable->setCellWidget(i, SP_COL_DELETE, createDeleteButtonWidget(i, true).release());
         }
     }
 

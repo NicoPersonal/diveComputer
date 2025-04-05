@@ -20,6 +20,10 @@ private:
     const int preferredWidth = 630;
     const int preferredHeight = 400;
 
+    // Progress dialog
+    std::unique_ptr<QProgressDialog> m_progressDialog;
+    std::unique_ptr<DivePlanWorker> m_divePlanWorker;
+
 
     // UI elements
     QTableWidget *gasTable;
@@ -35,9 +39,9 @@ private:
     void setupTableRowConnections(int row);
     
     // Helper functions
-    QWidget* createDeleteButtonWidget(int row);
+    std::unique_ptr<QWidget> createDeleteButtonWidget(int row, bool isSetpointTable = false);
     void updateGasFromRow(int row);
-    
+
 private slots:
     void addNewGas();
     void addBestGas();

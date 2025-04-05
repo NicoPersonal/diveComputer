@@ -219,7 +219,7 @@ void GasListWindow::addGasToTable(int row, const Gas& gas) {
     gasTable->setItem(row, COL_DENSITY, densityItem);
     
     // Delete button
-    gasTable->setCellWidget(row, COL_DELETE, createDeleteButtonWidget(row));
+    gasTable->setCellWidget(row, COL_DELETE, createDeleteButtonWidget(row).release());
 }
 
 void GasListWindow::updateTableRow(int row) {
@@ -300,13 +300,13 @@ void GasListWindow::highlightENDCells() {
     }
 }
 
-QWidget* GasListWindow::createDeleteButtonWidget(int row) {
-    QWidget* widget = new QWidget();
-    QHBoxLayout* layout = new QHBoxLayout(widget);
+std::unique_ptr<QWidget> GasListWindow::createDeleteButtonWidget(int row, bool isSetpointTable = false){
+    auto widget = std::make_unique<QWidget>();
+    QHBoxLayout* layout = new QHBoxLayout(widget.get());
     layout->setAlignment(Qt::AlignCenter);
     layout->setContentsMargins(2, 2, 2, 2);
     
-    QPushButton* deleteButton = new QPushButton("×");
+    QPushButton* deleteButton = new QPushButton("×", widget.get());
     deleteButton->setFixedSize(20, 20);
     deleteButton->setToolTip("Delete this gas");
     
@@ -462,5 +462,17 @@ void GasListWindow::onCheckboxChanged(int row) {
         gasStatusChanged(row, checkbox->checkState());
     }
 }
+
+void showProgressDialog(const QString& message) {
+    if (!m_progressDialog) {
+        m_progressDialog = std::make_unique<QProgressDialog>(message, "Cancel", 0, 0, this);
+        m_progressDialog->setWindowModality(Qt::WindowModal);
+        m_progressDialog->setCancelButton(nullptr); // Optional if no cancel needed
+    } else {
+        m_progressDialog->setLabelText(message);
+    }
+    m_progressDialog->show();
+}
+
 
 } // namespace DiveComputer

@@ -451,7 +451,7 @@ void DivePlanWindow::refreshDivePlan() {
 
 std::unique_ptr<QWidget> DivePlanWindow::createDeleteButtonWidget(int row, bool isSetpointTable) {
     auto widget = std::make_unique<QWidget>();
-    QHBoxLayout* layout = new QHBoxLayout(widget);
+    QHBoxLayout* layout = new QHBoxLayout(widget.get());
     layout->setAlignment(Qt::AlignCenter);
     layout->setContentsMargins(2, 2, 2, 2);
     
