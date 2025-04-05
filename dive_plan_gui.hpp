@@ -167,8 +167,10 @@ private:
     std::vector<int> m_gasesColumnWidths;
     int m_totalGasesWidth = 0;  // Initialize to 0!
 
-    // New method to handle the table resize
-    
+   // Progress dialog
+    std::unique_ptr<QProgressDialog> m_progressDialog;
+    void showProgressDialog(const QString& message);
+
     // UI methods
     void setupUI();
     void setupStopStepsTable();

@@ -1215,5 +1215,16 @@ void DivePlanWindow::ccModeActivated() {
     QApplication::processEvents();
 }
 
+void DivePlanWindow::showProgressDialog(const QString& message) {
+    if (!m_progressDialog) {
+        m_progressDialog = std::make_unique<QProgressDialog>(message, "Cancel", 0, 0, this);
+        m_progressDialog->setWindowModality(Qt::WindowModal);
+        m_progressDialog->setCancelButton(nullptr); // Optional if no cancel needed
+    } else {
+        m_progressDialog->setLabelText(message);
+    }
+    m_progressDialog->show();
+}
+
 
 } // namespace DiveComputer

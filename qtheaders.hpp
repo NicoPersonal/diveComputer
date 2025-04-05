@@ -50,5 +50,6 @@
 #include <QVariant>
 #include <QDoubleValidator>
 #include <QSignalMapper>
+#include <QProgressDialog>
 
 #endif
