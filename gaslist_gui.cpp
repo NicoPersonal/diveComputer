@@ -1,6 +1,4 @@
 #include "gaslist_gui.hpp"
-#include "enum.hpp"
-#include <QVariant>
 
 namespace DiveComputer {
 

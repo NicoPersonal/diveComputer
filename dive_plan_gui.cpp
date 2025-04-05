@@ -2,6 +2,7 @@
 #include "main_gui.hpp"
 #include "constants.hpp"
 #include "dive_plan_dialog.hpp"
+#include "ui_utils.hpp"
 
 namespace DiveComputer {
 

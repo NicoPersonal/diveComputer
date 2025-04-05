@@ -216,7 +216,6 @@ private slots:
     void optimiseDecoGas();
 
     // Helper methods 
-    std::unique_ptr<QWidget> createDeleteButtonWidget(int row, bool isSetpointTable = false);
     QString  getPhaseString(Phase phase);
     QString  getStepModeString(stepMode mode);
 };

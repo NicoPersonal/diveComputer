@@ -5,6 +5,8 @@
 #include "gaslist.hpp"
 #include "gas.hpp"
 #include "parameters.hpp"
+#include "enum.hpp"
+#include "ui_utils.hpp"
 
 namespace DiveComputer {
 
@@ -34,7 +36,6 @@ private:
     void setupTableRowConnections(int row);
     
     // Helper functions
-    std::unique_ptr<QWidget> createDeleteButtonWidget(int row, bool isSetpointTable = false);
     void updateGasFromRow(int row);
 
 private slots:
