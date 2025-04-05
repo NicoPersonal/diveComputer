@@ -148,6 +148,7 @@ private:
     QSplitter* mainSplitter = nullptr; // Main splitter between left and right panels
     QSplitter* leftPanelSplitter = nullptr; // For setpoints and stop steps
     QSplitter* topWidgetsSplitter = nullptr; // For gas list and placeholder
+    std::unique_ptr<QTimer> m_splitterCheckTimer;
 
     // Collapse/expand table
     QLabel *infoLabel;

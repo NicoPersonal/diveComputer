@@ -163,11 +163,9 @@ void GasListWindow::addGasToTable(int row, const Gas& gas) {
     activeCheckBox->setChecked(gas.m_gasStatus == GasStatus::ACTIVE);
     
     // Connect checkbox
-    QSignalMapper* checkboxMapper = new QSignalMapper(this);
-    connect(activeCheckBox, SIGNAL(stateChanged(int)), checkboxMapper, SLOT(map()));
-    checkboxMapper->setMapping(activeCheckBox, row);
-    connect(checkboxMapper, SIGNAL(mapped(int)), this, SLOT(onCheckboxChanged(int)));
-
+    connect(activeCheckBox, &QCheckBox::stateChanged, [this, row](int state) {
+        gasStatusChanged(row, state);
+    });
 
     checkBoxLayout->addWidget(activeCheckBox);
     gasTable->setCellWidget(row, COL_ACTIVE, checkBoxWidget);

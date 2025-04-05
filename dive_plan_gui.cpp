@@ -449,13 +449,13 @@ void DivePlanWindow::refreshDivePlan() {
     isRefreshing = false;
 }
 
-QWidget* DivePlanWindow::createDeleteButtonWidget(int row, bool isSetpointTable) {
-    QWidget* widget = new QWidget();
+std::unique_ptr<QWidget> DivePlanWindow::createDeleteButtonWidget(int row, bool isSetpointTable) {
+    auto widget = std::make_unique<QWidget>();
     QHBoxLayout* layout = new QHBoxLayout(widget);
     layout->setAlignment(Qt::AlignCenter);
     layout->setContentsMargins(2, 2, 2, 2);
     
-    QPushButton* deleteButton = new QPushButton("×");
+    QPushButton* deleteButton = new QPushButton("×", widget.get());
     deleteButton->setFixedSize(20, 20);
     deleteButton->setProperty("row", row);  // Store row index as a property
     
@@ -622,8 +622,9 @@ void DivePlanWindow::setupSplitters() {
     QApplication::processEvents();
     
     // Set up a timer to check splitter states periodically
-    QTimer* splitterCheckTimer = new QTimer(this);
-    connect(splitterCheckTimer, &QTimer::timeout, [this]() {
+    m_splitterCheckTimer = std::make_unique<QTimer>();
+    m_splitterCheckTimer->setParent(this); // Still set Qt parent for event system
+    connect(m_splitterCheckTimer.get(), &QTimer::timeout, [this]() {
         for (const auto& config : m_splitters) {
             if (config.splitter) {
                 updateSplitterVisibility(config.splitter);
@@ -638,7 +639,7 @@ void DivePlanWindow::setupSplitters() {
             }
         }
     });
-    splitterCheckTimer->start(500); // Check every half second
+    m_splitterCheckTimer->start(500); // Check every half second
 }
 
 void DivePlanWindow::configureSplitter(

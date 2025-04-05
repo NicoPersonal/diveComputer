@@ -195,7 +195,7 @@ void DivePlanWindow::refreshStopStepsTable() {
         
         // Delete button (except for the last row if there's only one)
         if (m_divePlan->m_stopSteps.nbOfStopSteps() > 1 || i < m_divePlan->m_stopSteps.nbOfStopSteps() - 1) {
-            stopStepsTable->setCellWidget(i, STOP_COL_DELETE, createDeleteButtonWidget(i));
+            stopStepsTable->setCellWidget(i, STOP_COL_DELETE, createDeleteButtonWidget(i).release());
         }
     }
     
