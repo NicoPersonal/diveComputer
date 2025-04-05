@@ -50,6 +50,7 @@ HEADERS += \
     dive_plan_dialog.hpp \
     dive_plan_gui.hpp \
     placeholder_gui.hpp \
+    ui_utils.hpp \
     main_gui.hpp
 
 macx {

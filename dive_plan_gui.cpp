@@ -449,34 +449,6 @@ void DivePlanWindow::refreshDivePlan() {
     isRefreshing = false;
 }
 
-std::unique_ptr<QWidget> DivePlanWindow::createDeleteButtonWidget(int row, bool isSetpointTable) {
-    auto widget = std::make_unique<QWidget>();
-    QHBoxLayout* layout = new QHBoxLayout(widget.get());
-    layout->setAlignment(Qt::AlignCenter);
-    layout->setContentsMargins(2, 2, 2, 2);
-    
-    QPushButton* deleteButton = new QPushButton("×", widget.get());
-    deleteButton->setFixedSize(20, 20);
-    deleteButton->setProperty("row", row);  // Store row index as a property
-    
-    if (isSetpointTable) {
-        deleteButton->setToolTip("Delete this setpoint");
-        connect(deleteButton, &QPushButton::clicked, this, [this, deleteButton]() {
-            int rowToDelete = deleteButton->property("row").toInt();
-            deleteSetpoint(rowToDelete);
-        });
-    } else {
-        deleteButton->setToolTip("Delete this stop step");
-        connect(deleteButton, &QPushButton::clicked, this, [this, deleteButton]() {
-            int rowToDelete = deleteButton->property("row").toInt();
-            deleteStopStep(rowToDelete);
-        });
-    }
-    
-    layout->addWidget(deleteButton);
-    return widget;
-}
-
 QString DivePlanWindow::getPhaseString(Phase phase)
 {
     return QString::fromStdString(getPhaseIcon(phase));

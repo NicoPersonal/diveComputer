@@ -163,7 +163,7 @@ void GasListWindow::addGasToTable(int row, const Gas& gas) {
     activeCheckBox->setChecked(gas.m_gasStatus == GasStatus::ACTIVE);
     
     // Connect checkbox
-    connect(activeCheckBox, &QCheckBox::stateChanged, [this, row](int state) {
+    connect(activeCheckBox, &QCheckBox::checkStateChanged, [this, row](int state) {
         gasStatusChanged(row, state);
     });
 
@@ -219,7 +219,9 @@ void GasListWindow::addGasToTable(int row, const Gas& gas) {
     gasTable->setItem(row, COL_DENSITY, densityItem);
     
     // Delete button
-    gasTable->setCellWidget(row, COL_DELETE, createDeleteButtonWidget(row).release());
+    gasTable->setCellWidget(row, COL_DELETE, createDeleteButtonWidget([this, row]() {
+        deleteGas(row);
+    }).release());
 }
 
 void GasListWindow::updateTableRow(int row) {
@@ -298,24 +300,6 @@ void GasListWindow::highlightENDCells() {
             densityItem->setBackground(QBrush(QColor(255, 200, 200)));
         }
     }
-}
-
-std::unique_ptr<QWidget> GasListWindow::createDeleteButtonWidget(int row, bool isSetpointTable = false){
-    auto widget = std::make_unique<QWidget>();
-    QHBoxLayout* layout = new QHBoxLayout(widget.get());
-    layout->setAlignment(Qt::AlignCenter);
-    layout->setContentsMargins(2, 2, 2, 2);
-    
-    QPushButton* deleteButton = new QPushButton("×", widget.get());
-    deleteButton->setFixedSize(20, 20);
-    deleteButton->setToolTip("Delete this gas");
-    
-    connect(deleteButton, &QPushButton::clicked, [this, row]() {
-        deleteGas(row);
-    });
-    
-    layout->addWidget(deleteButton);
-    return widget;
 }
 
 void GasListWindow::addNewGas() {

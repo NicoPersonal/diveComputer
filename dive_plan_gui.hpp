@@ -7,6 +7,7 @@
 #include "parameters.hpp"
 #include "enum.hpp"
 #include "global.hpp"
+#include "ui_utils.hpp"
 
 // Forward declaration of MainWindow class
 namespace DiveComputer { class MainWindow; }
