@@ -3,6 +3,7 @@
 
 #include "qtheaders.hpp"
 #include "enum.hpp"
+#include "error_handler.hpp"
 
 namespace DiveComputer {
 

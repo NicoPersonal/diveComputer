@@ -51,6 +51,10 @@
 #include <QDoubleValidator>
 #include <QSignalMapper>
 #include <QProgressDialog>
-
+#include <QMessageBox>       // For error dialogs
+#include <QInputDialog>      // For input validation dialogs 
+#include <QProgressDialog>   // For progress feedback during operations
+#include <QStatusBar>        // For status updates
+#include <QFileDialog>       // For file operations
 
 #endif

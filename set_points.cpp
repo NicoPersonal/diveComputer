@@ -97,106 +97,93 @@ void SetPoints::removeSetPoint(size_t index) {
     }
 }
 
+
 bool SetPoints::loadSetPointsFromFile() {
     const std::string filename = getFilePath(SETPOINTS_FILE_NAME);
     
-    std::cout << "Trying to load setpoints from: " << filename << std::endl;
+    if (!std::filesystem::exists(filename)) {
+        ErrorHandler::logError("SetPoints", "Setpoints file not found at " + filename + 
+                               ". Using defaults.", ErrorSeverity::INFO);
+        return false;
+    }
     
-    // Clear current setpoints
-    m_depths.clear();
-    m_setPoints.clear();
-    
-    // Try to load setpoints from file if it exists
-    if (std::filesystem::exists(filename)) {
-        std::cout << "Setpoints file exists, loading it..." << std::endl;
-        
+    return ErrorHandler::tryFileOperation([&]() {
         std::ifstream file(filename, std::ios::binary);
         if (!file.is_open()) {
-            std::cerr << "Failed to open setpoints file for reading." << std::endl;
-            return false;
-        } else {
-            try {
-                // Read number of setpoints
-                size_t count;
-                file.read(reinterpret_cast<char*>(&count), sizeof(count));
-                
-                // Read setpoints
-                for (size_t i = 0; i < count; ++i) {
-                    double depth, setpoint;
-                    file.read(reinterpret_cast<char*>(&depth), sizeof(depth));
-                    file.read(reinterpret_cast<char*>(&setpoint), sizeof(setpoint));
-                    
-                    m_depths.push_back(depth);
-                    m_setPoints.push_back(setpoint);
-                }
-                
-                file.close();
-                std::cout << "Setpoints loaded successfully. Count: " << count << std::endl;
-                
-                // Add a default setpoint if none were loaded
-                if (m_depths.empty()) {
-                    setToDefault();
-                }
-                
-                return true;
-            }
-            catch (const std::exception& e) {
-                std::cerr << "Exception while reading setpoints: " << e.what() << std::endl;
-                file.close();
-                return false;
-            }
+            throw std::ios_base::failure("Failed to open setpoints file for reading");
         }
-    } else {
-        std::cout << "Setpoints file does not exist at " << filename << ". Using default values." << std::endl;
         
-        // Add default setpoint
-        setToDefault();
+        // Clear existing setpoints
+        m_depths.clear();
+        m_setPoints.clear();
         
-        // Save default values to establish the file
-        saveSetPointsToFile();
+        // Read number of setpoints
+        size_t count = 0;
+        file.read(reinterpret_cast<char*>(&count), sizeof(count));
         
-        return false;
-    }
+        // Reserve space
+        m_depths.reserve(count);
+        m_setPoints.reserve(count);
+        
+        // Read each setpoint
+        for (size_t i = 0; i < count; ++i) {
+            double depth = 0.0;
+            double setPoint = 0.0;
+            
+            file.read(reinterpret_cast<char*>(&depth), sizeof(depth));
+            file.read(reinterpret_cast<char*>(&setPoint), sizeof(setPoint));
+            
+            if (file.fail()) {
+                throw std::ios_base::failure("Error reading setpoint data");
+            }
+            
+            // Add to vectors
+            m_depths.push_back(depth);
+            m_setPoints.push_back(setPoint);
+        }
+        
+        file.close();
+        
+        // Sort setpoints
+        sortSetPoints();
+        
+        ErrorHandler::logError("SetPoints", "Loaded " + std::to_string(count) + 
+                             " setpoints successfully", ErrorSeverity::INFO);
+    }, filename, "Error Loading Setpoints");
 }
 
-
-
-bool SetPoints::saveSetPointsToFile() const {
+bool SetPoints::saveSetPointsToFile() {
     const std::string filename = getFilePath(SETPOINTS_FILE_NAME);
     
-    std::cout << "Saving setpoints to: " << filename << std::endl;
-    
-    // Create directories if they don't exist
-    std::filesystem::path filePath(filename);
-    std::filesystem::create_directories(filePath.parent_path());
-    
-    std::ofstream file(filename, std::ios::binary | std::ios::trunc);
-    if (!file.is_open()) {
-        std::cerr << "Failed to open file for writing: " << filename << std::endl;
-        return false;
-    }
-
-    // Write number of setpoints
-    size_t count = nbOfSetPoints();
-    file.write(reinterpret_cast<const char*>(&count), sizeof(count));
-    
-    // Write each setpoint
-    for (size_t i = 0; i < count; ++i) {
-        file.write(reinterpret_cast<const char*>(&m_depths[i]), sizeof(m_depths[i]));
-        file.write(reinterpret_cast<const char*>(&m_setPoints[i]), sizeof(m_setPoints[i]));
-    }
-
-    file.close();
-    
-    // Verify the file was created
-    if (std::filesystem::exists(filename)) {
-        std::cout << "Setpoints saved successfully to " << filename << ". File size: " 
-                  << std::filesystem::file_size(filename) << " bytes" << std::endl;
-        return true;
-    } else {
-        std::cerr << "Error: File does not exist after save operation!" << std::endl;
-        return false;
-    }
+    return ErrorHandler::tryFileOperation([&]() {
+        // Create directory if it doesn't exist
+        std::filesystem::path filePath(filename);
+        std::filesystem::create_directories(filePath.parent_path());
+        
+        std::ofstream file(filename, std::ios::binary | std::ios::trunc);
+        if (!file.is_open()) {
+            throw std::ios_base::failure("Failed to open file for writing: " + filename);
+        }
+        
+        // Write number of setpoints
+        size_t count = m_depths.size();
+        file.write(reinterpret_cast<const char*>(&count), sizeof(count));
+        
+        // Write each setpoint
+        for (size_t i = 0; i < count; ++i) {
+            file.write(reinterpret_cast<const char*>(&m_depths[i]), sizeof(m_depths[i]));
+            file.write(reinterpret_cast<const char*>(&m_setPoints[i]), sizeof(m_setPoints[i]));
+            
+            if (file.fail()) {
+                throw std::ios_base::failure("Error writing setpoint data");
+            }
+        }
+        
+        file.close();
+        
+        ErrorHandler::logError("SetPoints", "Saved " + std::to_string(count) + 
+                             " setpoints successfully", ErrorSeverity::INFO);
+    }, filename, "Error Saving Setpoints");
 }
 
 } // namespace DiveComputer

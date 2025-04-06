@@ -84,13 +84,10 @@ void GasListWindow::setupUI() {
     // Set table headers with units on second line
     QStringList headers;
     headers << "Active" << "Type" << "O₂\n%" << "He\n%" << "MOD\n(m)" << "END w/o O₂\n(m)" << "END w/ O₂\n(m)" << "Density\n(g/L)" << "";
-    gasTable->setHorizontalHeaderLabels(headers);
     
-    // Configure table
-    gasTable->setSelectionBehavior(QAbstractItemView::SelectItems); // Changed to allow selecting specific items
-    gasTable->setSelectionMode(QAbstractItemView::SingleSelection); // Only select one item at a time
-    gasTable->setAlternatingRowColors(true);
-    gasTable->verticalHeader()->setVisible(false);
+    // Configure table using TableHelper
+    TableHelper::configureTable(gasTable, QAbstractItemView::SelectItems);
+    TableHelper::setHeaders(gasTable, headers);
     
     // Set specific column widths
     for (int i = 0; i < NUM_COLUMNS; i++) {
@@ -113,38 +110,29 @@ void GasListWindow::setupUI() {
     }
     
     // Add vertical separator line after He column
-    // Qt doesn't have direct support for column separators, so we'll customize the table's stylesheet
     gasTable->setStyleSheet(
         "QTableView::item:column(" + QString::number(COL_HE) + ") { border-right: 2px solid #888; }"
     );
     
-    gasTable->setEditTriggers(QAbstractItemView::DoubleClicked | QAbstractItemView::SelectedClicked | QAbstractItemView::EditKeyPressed);
-    
     // Table cell change connections
-    connect(gasTable, SIGNAL(cellChanged(int, int)), this, SLOT(cellChanged(int, int)));
+    connect(gasTable, &QTableWidget::cellChanged, this, &GasListWindow::cellChanged);
     
     // Layout
     mainLayout->addLayout(topLayout);
     mainLayout->addWidget(gasTable);
-    
-    // Note: We no longer set a size here, it's done in the constructor
 }
 
 void GasListWindow::refreshGasTable() {
-    // Disconnect while updating
-    disconnect(gasTable, &QTableWidget::cellChanged, this, &GasListWindow::cellChanged);
-    
-    // Clear and reset the table
-    gasTable->clearContents();
-    gasTable->setRowCount(g_gasList.gases.size());
-    
-    // Add gases to table
-    for (size_t i = 0; i < g_gasList.gases.size(); ++i) {
-        addGasToTable(i, g_gasList.gases[i]);
-    }
-    
-    // Reconnect signals
-    connect(gasTable, SIGNAL(cellChanged(int, int)), this, SLOT(cellChanged(int, int)));
+    // Use the TableHelper for safe update
+    TableHelper::safeUpdate(gasTable, this, &GasListWindow::cellChanged, [this]() {
+        // Set row count
+        gasTable->setRowCount(g_gasList.getGases().size());
+        
+        // Add gases to table
+        for (size_t i = 0; i < g_gasList.getGases().size(); ++i) {
+            addGasToTable(i, g_gasList.getGases()[i]);
+        }
+    });
     
     // Highlight END cells based on parameters
     highlightENDCells();
@@ -160,9 +148,9 @@ void GasListWindow::addGasToTable(int row, const Gas& gas) {
     QCheckBox *activeCheckBox = new QCheckBox(this);
     activeCheckBox->setChecked(gas.m_gasStatus == GasStatus::ACTIVE);
     
-    // Connect checkbox
-    connect(activeCheckBox, &QCheckBox::checkStateChanged, [this, row](int state) {
-        gasStatusChanged(row, state);
+    // Connect checkbox directly with lambda
+    connect(activeCheckBox, &QCheckBox::checkStateChanged, [this, row](Qt::CheckState state) {
+        gasStatusChanged(row, static_cast<int>(state));
     });
 
     checkBoxLayout->addWidget(activeCheckBox);
@@ -177,45 +165,35 @@ void GasListWindow::addGasToTable(int row, const Gas& gas) {
 
     typeComboBox->setCurrentIndex(static_cast<int>(gas.m_gasType));
     
-    // Connect combobox
-    connect(typeComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(onTypeComboBoxChanged(int)));
+    // Connect combobox with modern syntax
+    connect(typeComboBox, &QComboBox::currentIndexChanged, this, &GasListWindow::onTypeComboBoxChanged);
     
     gasTable->setCellWidget(row, COL_TYPE, typeComboBox);
     
     // O2 percentage
-    QTableWidgetItem *o2Item = new QTableWidgetItem(QString::number(gas.m_o2Percent, 'f', 0));
-    o2Item->setTextAlignment(Qt::AlignCenter);
+    QTableWidgetItem *o2Item = TableHelper::createNumericCell(gas.m_o2Percent, 0, true);
     gasTable->setItem(row, COL_O2, o2Item);
     
     // He percentage
-    QTableWidgetItem *heItem = new QTableWidgetItem(QString::number(gas.m_hePercent, 'f', 0));
-    heItem->setTextAlignment(Qt::AlignCenter);
+    QTableWidgetItem *heItem = TableHelper::createNumericCell(gas.m_hePercent, 0, true);
     gasTable->setItem(row, COL_HE, heItem);
     
     // MOD (calculated value, non-editable)
-    QTableWidgetItem *modItem = new QTableWidgetItem(QString::number(gas.m_MOD, 'f', 0));
-    modItem->setTextAlignment(Qt::AlignCenter);
-    modItem->setFlags(modItem->flags() & ~Qt::ItemIsEditable & ~Qt::ItemIsSelectable);
+    QTableWidgetItem *modItem = TableHelper::createNumericCell(gas.m_MOD, 0, false);
     gasTable->setItem(row, COL_MOD, modItem);
     
     // END without O2 (calculated value, non-editable)
-    QTableWidgetItem *endNoO2Item = new QTableWidgetItem(QString::number(gas.ENDWithoutO2(gas.m_MOD), 'f', 0));
-    endNoO2Item->setTextAlignment(Qt::AlignCenter);
-    endNoO2Item->setFlags(endNoO2Item->flags() & ~Qt::ItemIsEditable & ~Qt::ItemIsSelectable);
+    QTableWidgetItem *endNoO2Item = TableHelper::createNumericCell(gas.ENDWithoutO2(gas.m_MOD), 0, false);
     gasTable->setItem(row, COL_END_NO_O2, endNoO2Item);
     
     // END with O2 (calculated value, non-editable)
-    QTableWidgetItem *endWithO2Item = new QTableWidgetItem(QString::number(gas.ENDWithO2(gas.m_MOD), 'f', 0));
-    endWithO2Item->setTextAlignment(Qt::AlignCenter);
-    endWithO2Item->setFlags(endWithO2Item->flags() & ~Qt::ItemIsEditable & ~Qt::ItemIsSelectable);
+    QTableWidgetItem *endWithO2Item = TableHelper::createNumericCell(gas.ENDWithO2(gas.m_MOD), 0, false);
     gasTable->setItem(row, COL_END_WITH_O2, endWithO2Item);
     
     // Gas density (calculated value, non-editable)
-    QTableWidgetItem *densityItem = new QTableWidgetItem(QString::number(gas.Density(gas.m_MOD), 'f', 1));
-    densityItem->setTextAlignment(Qt::AlignCenter);
-    densityItem->setFlags(densityItem->flags() & ~Qt::ItemIsEditable & ~Qt::ItemIsSelectable);
+    QTableWidgetItem *densityItem = TableHelper::createNumericCell(gas.Density(gas.m_MOD), 1, false);
     gasTable->setItem(row, COL_DENSITY, densityItem);
-    
+
     // Delete button
     gasTable->setCellWidget(row, COL_DELETE, createDeleteButtonWidget([this, row]() {
         deleteGas(row);
@@ -227,7 +205,7 @@ void GasListWindow::updateTableRow(int row) {
         return;
     }
     
-    const Gas& gas = g_gasList.gases[row];
+    const Gas& gas = g_gasList.getGases()[row];
     
     // MOD
     QTableWidgetItem* modItem = gasTable->item(row, COL_MOD);
@@ -258,45 +236,27 @@ void GasListWindow::updateTableRow(int row) {
 }
 
 void GasListWindow::highlightENDCells() {
+    const auto& gases = g_gasList.getGases();
     for (int row = 0; row < gasTable->rowCount(); ++row) {
-        double endNoO2 = g_gasList.gases[row].ENDWithoutO2(g_gasList.gases[row].m_MOD);
-        double endWithO2 = g_gasList.gases[row].ENDWithO2(g_gasList.gases[row].m_MOD);
-        double density = g_gasList.gases[row].Density(g_gasList.gases[row].m_MOD);
+        double endNoO2 = gases[row].ENDWithoutO2(gases[row].m_MOD);
+        double endWithO2 = gases[row].ENDWithO2(gases[row].m_MOD);
+        double density = gases[row].Density(gases[row].m_MOD);
         
         QTableWidgetItem* endNoO2Item = gasTable->item(row, COL_END_NO_O2);
         QTableWidgetItem* endWithO2Item = gasTable->item(row, COL_END_WITH_O2);
         QTableWidgetItem* densityItem = gasTable->item(row, COL_DENSITY);
         
-        // Reset background colors
-        if (endNoO2Item) {
-            endNoO2Item->setBackground(QBrush());
-        }
-        
-        if (endWithO2Item) {
-            endWithO2Item->setBackground(QBrush());
-        }
-        
-        if (densityItem) {
-            densityItem->setBackground(QBrush());
-        }
-        
         // Set warning backgrounds based on parameters
         if (g_parameters.m_defaultO2Narcotic) {
             // Highlight END with O2 if it exceeds the limit
-            if (endWithO2Item && endWithO2 > g_parameters.m_defaultEnd) {
-                endWithO2Item->setBackground(QBrush(QColor(255, 200, 200)));
-            }
+            TableHelper::highlightCell(endWithO2Item, endWithO2 > g_parameters.m_defaultEnd);
         } else {
             // Highlight END without O2 if it exceeds the limit
-            if (endNoO2Item && endNoO2 > g_parameters.m_defaultEnd) {
-                endNoO2Item->setBackground(QBrush(QColor(255, 200, 200)));
-            }
+            TableHelper::highlightCell(endNoO2Item, endNoO2 > g_parameters.m_defaultEnd);
         }
         
         // Highlight density if it exceeds the warning threshold
-        if (densityItem && density > g_parameters.m_warningGasDensity) {
-            densityItem->setBackground(QBrush(QColor(255, 200, 200)));
-        }
+        TableHelper::highlightCell(densityItem, density > g_parameters.m_warningGasDensity);
     }
 }
 
@@ -365,10 +325,11 @@ void GasListWindow::gasTypeChanged(int row, int index) {
     GasType gasType = static_cast<GasType>(index);
     
     // Update the gas in the list
-    if (row >= 0 && row < static_cast<int>(g_gasList.gases.size())) {
-        double o2 = g_gasList.gases[row].m_o2Percent;
-        double he = g_gasList.gases[row].m_hePercent;
-        GasStatus status = g_gasList.gases[row].m_gasStatus;
+    const auto& gases = g_gasList.getGases();
+    if (row >= 0 && row < static_cast<int>(gases.size())) {
+        double o2 = gases[row].m_o2Percent;
+        double he = gases[row].m_hePercent;
+        GasStatus status = gases[row].m_gasStatus;
         
         g_gasList.editGas(row, o2, he, gasType, status);
         
@@ -385,10 +346,11 @@ void GasListWindow::gasStatusChanged(int row, int state) {
     GasStatus gasStatus = (state == Qt::Checked) ? GasStatus::ACTIVE : GasStatus::INACTIVE;
     
     // Update the gas in the list
-    if (row >= 0 && row < static_cast<int>(g_gasList.gases.size())) {
-        double o2 = g_gasList.gases[row].m_o2Percent;
-        double he = g_gasList.gases[row].m_hePercent;
-        GasType type = g_gasList.gases[row].m_gasType;
+    const auto& gases = g_gasList.getGases();
+    if (row >= 0 && row < static_cast<int>(gases.size())) {
+        double o2 = gases[row].m_o2Percent;
+        double he = gases[row].m_hePercent;
+        GasType type = gases[row].m_gasType;
         
         g_gasList.editGas(row, o2, he, type, gasStatus);
         
@@ -398,7 +360,8 @@ void GasListWindow::gasStatusChanged(int row, int state) {
 }
 
 void GasListWindow::updateGasFromRow(int row) {
-    if (row >= 0 && row < static_cast<int>(g_gasList.gases.size())) {
+    const auto& gases = g_gasList.getGases();
+    if (row >= 0 && row < static_cast<int>(gases.size())) {
         // Get current values from table
         QTableWidgetItem* o2Item = gasTable->item(row, COL_O2);
         QTableWidgetItem* heItem = gasTable->item(row, COL_HE);
@@ -446,3 +409,4 @@ void GasListWindow::onCheckboxChanged(int row) {
 }
 
 } // namespace DiveComputer
+

@@ -130,28 +130,19 @@ void DivePlanWindow::deleteStopStep(int row) {
     });
 }
 
-void DivePlanWindow::setupStopStepsTable()
-{
+void DivePlanWindow::setupStopStepsTable() {
     // Set up column headers
     QStringList headers;
     headers << "Depth\n(m)" << "Time\n(min)" << "";
-    stopStepsTable->setHorizontalHeaderLabels(headers);
     
-    // Configure table properties
-    stopStepsTable->setSelectionBehavior(QAbstractItemView::SelectItems);
-    stopStepsTable->setSelectionMode(QAbstractItemView::SingleSelection);
-    stopStepsTable->setAlternatingRowColors(true);
-    stopStepsTable->verticalHeader()->setVisible(false);
+    // Configure table
+    TableHelper::configureTable(stopStepsTable, QAbstractItemView::SelectItems);
+    TableHelper::setHeaders(stopStepsTable, headers);
     
     // Set column widths
     stopStepsTable->setColumnWidth(STOP_COL_DEPTH, 60);
     stopStepsTable->setColumnWidth(STOP_COL_TIME,  60);
     stopStepsTable->setColumnWidth(STOP_COL_DELETE, 45);
-    
-    // Set edit triggers
-    stopStepsTable->setEditTriggers(QAbstractItemView::DoubleClicked | 
-                                   QAbstractItemView::SelectedClicked | 
-                                   QAbstractItemView::EditKeyPressed);
     
     // Connect cell change signal
     connect(stopStepsTable, &QTableWidget::cellChanged, 
@@ -167,46 +158,33 @@ void DivePlanWindow::refreshStopStepsTable() {
     qDebug() << "Refreshing stop steps table - START - Count:" << m_divePlan->m_stopSteps.nbOfStopSteps();
     m_isUpdating = true;
 
-    // Disconnect cell change signals temporarily
-    disconnect(stopStepsTable, &QTableWidget::cellChanged, 
-               this, &DivePlanWindow::stopStepCellChanged);
-    
-    // Clear and reset the table
-    stopStepsTable->clearContents();
-    stopStepsTable->setRowCount(m_divePlan->m_stopSteps.nbOfStopSteps());
-    
-    // Add stop steps to table
-    for (int i = 0; i < m_divePlan->m_stopSteps.nbOfStopSteps(); ++i) {
-        qDebug() << "  Adding stop step" << i << "to table: Depth ="
-                 << m_divePlan->m_stopSteps.m_stopSteps[i].m_depth
-                 << "Time =" << m_divePlan->m_stopSteps.m_stopSteps[i].m_time;
-                 
-        // Depth item
-        QTableWidgetItem *depthItem = new QTableWidgetItem(
-            QString::number(m_divePlan->m_stopSteps.m_stopSteps[i].m_depth, 'f', 1));
-        depthItem->setTextAlignment(Qt::AlignCenter);
-        stopStepsTable->setItem(i, STOP_COL_DEPTH, depthItem);
+    // Use the TableHelper for safe update
+    TableHelper::safeUpdate(stopStepsTable, this, &DivePlanWindow::stopStepCellChanged, [this]() {
+        stopStepsTable->setRowCount(m_divePlan->m_stopSteps.nbOfStopSteps());
         
-        // Time item
-        QTableWidgetItem *timeItem = new QTableWidgetItem(
-            QString::number(m_divePlan->m_stopSteps.m_stopSteps[i].m_time, 'f', 1));
-        timeItem->setTextAlignment(Qt::AlignCenter);
-        stopStepsTable->setItem(i, STOP_COL_TIME, timeItem);
-        
-        // Delete button (except for the last row if there's only one)
-        if (m_divePlan->m_stopSteps.nbOfStopSteps() > 1 || i < m_divePlan->m_stopSteps.nbOfStopSteps() - 1) {
-            stopStepsTable->setCellWidget(i, STOP_COL_DELETE, createDeleteButtonWidget([this, i]() {
-                deleteStopStep(i);
-            }).release());
+        // Add stop steps to table
+        for (int i = 0; i < m_divePlan->m_stopSteps.nbOfStopSteps(); ++i) {
+            // Depth item
+            stopStepsTable->setItem(i, STOP_COL_DEPTH, 
+                TableHelper::createNumericCell(m_divePlan->m_stopSteps.m_stopSteps[i].m_depth, 1, true));
+            
+            // Time item
+            stopStepsTable->setItem(i, STOP_COL_TIME, 
+                TableHelper::createNumericCell(m_divePlan->m_stopSteps.m_stopSteps[i].m_time, 1, true));
+            
+            // Delete button (except for the last row if there's only one)
+            if (m_divePlan->m_stopSteps.nbOfStopSteps() > 1 || i < m_divePlan->m_stopSteps.nbOfStopSteps() - 1) {
+                stopStepsTable->setCellWidget(i, STOP_COL_DELETE, createDeleteButtonWidget([this, i]() {
+                    deleteStopStep(i);
+                }).release());
+            }
         }
-    }
-    
-    // Reconnect cell change signals
-    connect(stopStepsTable, &QTableWidget::cellChanged, this, &DivePlanWindow::stopStepCellChanged);
+    });
 
     qDebug() << "Refreshing stop steps table - END";
     m_isUpdating = false;
 }
+
 
 
 } // namespace DiveComputer

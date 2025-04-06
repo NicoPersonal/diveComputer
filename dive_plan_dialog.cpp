@@ -1,4 +1,5 @@
 #include "dive_plan_dialog.hpp"
+#include "error_handler.hpp"
 
 namespace DiveComputer {
 
@@ -63,8 +64,7 @@ void DivePlanDialog::setupUI()
     setMinimumWidth(300);
 }
 
-void DivePlanDialog::validateInputs()
-{
+void DivePlanDialog::validateInputs() {
     // Get the depth and bottom time values
     bool depthValid = false;
     bool timeValid = false;
@@ -72,8 +72,20 @@ void DivePlanDialog::validateInputs()
     double depth = depthEdit->text().toDouble(&depthValid);
     double time = bottomTimeEdit->text().toDouble(&timeValid);
     
-    // Enable create button if both are valid and non-zero
-    createButton->setEnabled(depthValid && timeValid && depth > 0 && time > 0);
+    // Use new validator for depth
+    if (depthValid) {
+        depthValid = ErrorHandler::validateNumericInput(
+            depthEdit->text(), depth, 0.1, 300.0, "Depth", false);
+    }
+    
+    // Use new validator for time
+    if (timeValid) {
+        timeValid = ErrorHandler::validateNumericInput(
+            bottomTimeEdit->text(), time, 0.1, 1000.0, "Bottom Time", false);
+    }
+    
+    // Enable create button if both are valid
+    createButton->setEnabled(depthValid && timeValid);
 }
 
 double DivePlanDialog::getDepth() const

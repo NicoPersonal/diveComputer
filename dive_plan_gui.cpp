@@ -460,10 +460,7 @@ QString DivePlanWindow::getStepModeString(stepMode mode)
     return QString::fromStdString(getStepModeIcon(mode));
 }
 
-void DivePlanWindow::highlightWarningCells()
-{
-    // Define warning colors
-    QBrush warningBrush(QColor(255, 200, 200)); // Light red
+void DivePlanWindow::highlightWarningCells() {
     
     for (int row = 0; row < divePlanTable->rowCount(); ++row) {
         // Get current values
@@ -471,29 +468,27 @@ void DivePlanWindow::highlightWarningCells()
         
         // 1. Gas Density
         QTableWidgetItem* gasItem = divePlanTable->item(row, COL_GAS_DENSITY);
-        if (gasItem && step.m_gasDensity > g_parameters.m_warningGasDensity) {
-            gasItem->setBackground(warningBrush);
+        if (gasItem) {
+            TableHelper::highlightCell(gasItem, step.m_gasDensity > g_parameters.m_warningGasDensity);
         }
         
         // 2. pO2 Max (too high or too low)
         QTableWidgetItem* pO2Item = divePlanTable->item(row, COL_PO2_MAX);
         if (pO2Item) {
-            if (step.m_pO2Max > g_parameters.m_PpO2Deco || 
-                step.m_pO2Max < g_parameters.m_warningPpO2Low) {
-                pO2Item->setBackground(warningBrush);
-            }
+            TableHelper::highlightCell(pO2Item, 
+                (step.m_pO2Max > g_parameters.m_PpO2Deco || step.m_pO2Max < g_parameters.m_warningPpO2Low));
         }
         
         // 3. CNS Single Dive
         QTableWidgetItem* cnsItem = divePlanTable->item(row, COL_CNS_SINGLE);
-        if (cnsItem && step.m_cnsTotalSingleDive > g_parameters.m_warningCnsMax) {
-            cnsItem->setBackground(warningBrush);
+        if (cnsItem) {
+            TableHelper::highlightCell(cnsItem, step.m_cnsTotalSingleDive > g_parameters.m_warningCnsMax);
         }
         
         // 4. OTU Total
         QTableWidgetItem* otuItem = divePlanTable->item(row, COL_OTU);
-        if (otuItem && step.m_otuTotal > g_parameters.m_warningOtuMax) {
-            otuItem->setBackground(warningBrush);
+        if (otuItem) {
+            TableHelper::highlightCell(otuItem, step.m_otuTotal > g_parameters.m_warningOtuMax);
         }
     }
 }

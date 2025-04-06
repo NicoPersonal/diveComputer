@@ -1,34 +1,63 @@
 #ifndef GASLIST_HPP
 #define GASLIST_HPP
 
-#include "parameters.hpp"
+#include "qtheaders.hpp"
+#include "error_handler.hpp"
 #include "gas.hpp"
-#include <iostream>
 #include <vector>
+#include <fstream>
+#include <filesystem>
+#include <memory>
 
 namespace DiveComputer {
 
-// List of gases
 class GasList {
 public:
+    // Constructor
     GasList();
-
-    std::vector<Gas> gases;
-
+    
+    // Destructor
+    ~GasList();
+    
+    // Add a new gas to the list
     void addGas(double o2Percent, double hePercent, GasType gasType, GasStatus gasStatus);
+    
+    // Edit an existing gas
     void editGas(int index, double o2Percent, double hePercent, GasType gasType, GasStatus gasStatus);
+    
+    // Delete a gas from the list
     void deleteGas(int index);
-
+    
+    // Clear entire gas list
     void clearGaslist();
+    
+    // Load gas list from file
     bool loadGaslistFromFile();
+    
+    // Save gas list to file
     bool saveGaslistToFile();
+    
+    // Print gas list (for debugging)
     void print();
+    
+    // Getter for gases
+    const std::vector<Gas>& getGases() const;
 
+private:
+    // Pimpl idiom for implementation details
+    class Impl;
+    std::unique_ptr<Impl> pImpl;
+
+    // Helper method to ensure app info is set
+    void ensureAppInfoSet();
+    
+    // Get file path for app-specific files
+    std::string getFilePath(const std::string& filename);
 };
 
-// Global instance - this will be defined in gaslist.cpp
+// Declare global instance
 extern GasList g_gasList;
 
 } // namespace DiveComputer
 
-#endif
+#endif // GASLIST_HPP

@@ -9,13 +9,10 @@ void DivePlanWindow::setupGasesTable() {
     QStringList headers;
     headers << "O2\n(%)" << "He\n(%)" << "Switch\n(m)" << "Switch\n(ppO2)" << "Consumption\n(L)" 
             << "Tanks\n(#)" << "Capacity\n(L)" << "Fill\n(bar)" << "Reserve\n(bar)" << "End\n(bar)";
-    gasesTable->setHorizontalHeaderLabels(headers);
     
-    // Configure table properties
-    gasesTable->setSelectionBehavior(QAbstractItemView::SelectRows);
-    gasesTable->setSelectionMode(QAbstractItemView::SingleSelection);
-    gasesTable->setAlternatingRowColors(true);
-    gasesTable->verticalHeader()->setVisible(false);
+    // Configure table
+    TableHelper::configureTable(gasesTable, QAbstractItemView::SelectRows);
+    TableHelper::setHeaders(gasesTable, headers);
     
     // Set edit triggers
     gasesTable->setEditTriggers(QAbstractItemView::DoubleClicked | 
@@ -52,7 +49,7 @@ void DivePlanWindow::setupGasesTable() {
     // Mark columns as initialized
     m_gasesColumnsInitialized = true;
     
-    // Connect cell change signal using the safer pointer-to-member syntax
+    // Connect cell change signal
     connect(gasesTable, &QTableWidget::cellChanged, this, &DivePlanWindow::gasTableCellChanged);
         
     // Set reasonable default widths directly
@@ -67,115 +64,90 @@ void DivePlanWindow::refreshGasesTable() {
     
     isRefreshing = true;
     
-    // Disconnect cell change signals temporarily
-    disconnect(gasesTable, &QTableWidget::cellChanged, this, &DivePlanWindow::gasTableCellChanged);
-    
-    // Clear the table
-    gasesTable->clearContents();
-    
-    // Get gases sorted by increasing O2 content (optional - you can use this if you want sorting)
-    std::vector<GasAvailable> sortedGases = m_divePlan->m_gasAvailable;
-    std::sort(sortedGases.begin(), sortedGases.end(), 
-              [](const GasAvailable& a, const GasAvailable& b) {
-                  return a.m_gas.m_o2Percent < b.m_gas.m_o2Percent;
-              });
-    
-    // Clear and rebuild the mapping
-    m_gasRowToOriginalIndex.clear();
-    
-    // Create mapping from table rows to original gas indices
-    for (size_t i = 0; i < sortedGases.size(); ++i) {
-        // Find original index in unsorted list
-        for (size_t j = 0; j < m_divePlan->m_gasAvailable.size(); ++j) {
-            if (std::abs(m_divePlan->m_gasAvailable[j].m_gas.m_o2Percent - sortedGases[i].m_gas.m_o2Percent) < 0.1 &&
-                std::abs(m_divePlan->m_gasAvailable[j].m_gas.m_hePercent - sortedGases[i].m_gas.m_hePercent) < 0.1) {
-                m_gasRowToOriginalIndex.push_back(j);
-                break;
+    // Use the TableHelper for safe update
+    TableHelper::safeUpdate(gasesTable, this, &DivePlanWindow::gasTableCellChanged, [this]() {
+        // Get gases sorted by increasing O2 content
+        std::vector<GasAvailable> sortedGases = m_divePlan->m_gasAvailable;
+        std::sort(sortedGases.begin(), sortedGases.end(), 
+                [](const GasAvailable& a, const GasAvailable& b) {
+                    return a.m_gas.m_o2Percent < b.m_gas.m_o2Percent;
+                });
+        
+        // Clear and rebuild the mapping
+        m_gasRowToOriginalIndex.clear();
+        
+        // Create mapping from table rows to original gas indices
+        for (size_t i = 0; i < sortedGases.size(); ++i) {
+            // Find original index in unsorted list
+            for (size_t j = 0; j < m_divePlan->m_gasAvailable.size(); ++j) {
+                if (std::abs(m_divePlan->m_gasAvailable[j].m_gas.m_o2Percent - sortedGases[i].m_gas.m_o2Percent) < 0.1 &&
+                    std::abs(m_divePlan->m_gasAvailable[j].m_gas.m_hePercent - sortedGases[i].m_gas.m_hePercent) < 0.1) {
+                    m_gasRowToOriginalIndex.push_back(j);
+                    break;
+                }
             }
         }
-    }
-    
-    // Set number of rows
-    gasesTable->setRowCount(sortedGases.size());
-    
-    // Add gases to table
-    for (size_t i = 0; i < sortedGases.size(); ++i) {
-        const GasAvailable& gas = sortedGases[i];
         
-        // O2 Percent
-        QTableWidgetItem *o2Item = new QTableWidgetItem(QString::number(gas.m_gas.m_o2Percent, 'f', 0));
-        o2Item->setTextAlignment(Qt::AlignCenter);
-        o2Item->setFlags(o2Item->flags() & ~Qt::ItemIsEditable); // Non-editable
-        o2Item->setData(Qt::UserRole, QVariant(m_gasRowToOriginalIndex[i])); // Store original index
-        gasesTable->setItem(i, GAS_COL_O2, o2Item);
+        // Set number of rows
+        gasesTable->setRowCount(sortedGases.size());
         
-        // He Percent
-        QTableWidgetItem *heItem = new QTableWidgetItem(QString::number(gas.m_gas.m_hePercent, 'f', 0));
-        heItem->setTextAlignment(Qt::AlignCenter);
-        heItem->setFlags(heItem->flags() & ~Qt::ItemIsEditable); // Non-editable
-        gasesTable->setItem(i, GAS_COL_HE, heItem);
-        
-        // Switch Depth (m)
-        QTableWidgetItem *switchDepthItem = new QTableWidgetItem(QString::number(gas.m_switchDepth, 'f', 0));
-        switchDepthItem->setTextAlignment(Qt::AlignCenter);
-        switchDepthItem->setFlags(switchDepthItem->flags() & ~Qt::ItemIsEditable); // Non-editable
-        gasesTable->setItem(i, GAS_COL_SWITCH_DEPTH, switchDepthItem);
-        
-        // Switch PpO2
-        QTableWidgetItem *switchPpO2Item = new QTableWidgetItem(QString::number(gas.m_switchPpO2, 'f', 2));
-        switchPpO2Item->setTextAlignment(Qt::AlignCenter);
-        switchPpO2Item->setFlags(switchPpO2Item->flags() & ~Qt::ItemIsEditable); // Non-editable
-        gasesTable->setItem(i, GAS_COL_SWITCH_PPO2, switchPpO2Item);
-        
-        // Consumption
-        QTableWidgetItem *consumptionItem = new QTableWidgetItem(QString::number(gas.m_consumption, 'f', 0));
-        consumptionItem->setTextAlignment(Qt::AlignCenter);
-        consumptionItem->setFlags(consumptionItem->flags() & ~Qt::ItemIsEditable); // Non-editable
-        gasesTable->setItem(i, GAS_COL_CONSUMPTION, consumptionItem);
-        
-        // Number of Tanks
-        QTableWidgetItem *nbTanksItem = new QTableWidgetItem(QString::number(gas.m_nbTanks));
-        nbTanksItem->setTextAlignment(Qt::AlignCenter);
-        nbTanksItem->setFlags(nbTanksItem->flags() | Qt::ItemIsEditable); // Editable
-        gasesTable->setItem(i, GAS_COL_NB_TANKS, nbTanksItem);
-        
-        // Tank Capacity
-        QTableWidgetItem *capacityItem = new QTableWidgetItem(QString::number(gas.m_tankCapacity, 'f', 1));
-        capacityItem->setTextAlignment(Qt::AlignCenter);
-        capacityItem->setFlags(capacityItem->flags() | Qt::ItemIsEditable); // Editable
-        gasesTable->setItem(i, GAS_COL_TANK_CAPACITY, capacityItem);
-        
-        // Filling Pressure
-        QTableWidgetItem *fillingItem = new QTableWidgetItem(QString::number(gas.m_fillingPressure, 'f', 0));
-        fillingItem->setTextAlignment(Qt::AlignCenter);
-        fillingItem->setFlags(fillingItem->flags() | Qt::ItemIsEditable); // Editable
-        gasesTable->setItem(i, GAS_COL_FILLING_PRESSURE, fillingItem);
-        
-        // Reserve Pressure
-        QTableWidgetItem *reserveItem = new QTableWidgetItem(QString::number(gas.m_reservePressure, 'f', 0));
-        reserveItem->setTextAlignment(Qt::AlignCenter);
-        reserveItem->setFlags(reserveItem->flags() | Qt::ItemIsEditable); // Editable
-        gasesTable->setItem(i, GAS_COL_RESERVE_PRESSURE, reserveItem);
-        
-        // End Pressure
-        QTableWidgetItem *endItem = new QTableWidgetItem(QString::number(gas.m_endPressure, 'f', 0));
-        endItem->setTextAlignment(Qt::AlignCenter);
-        endItem->setFlags(endItem->flags() & ~Qt::ItemIsEditable); // Non-editable
-        
-        // Highlight based on pressure status, but only change text color for red background
-        if (gas.m_endPressure <= 0) {
-            // Flashy red for out of gas - white text gives better contrast
-            endItem->setBackground(QBrush(QColor(255, 0, 0)));
-            endItem->setForeground(QBrush(QColor(255, 255, 255)));
-        } else if (gas.m_endPressure <= gas.m_reservePressure) {
-            // Light red for low gas (at or below reserve) - keep system default text color
-            endItem->setBackground(QBrush(QColor(255, 200, 200)));
+        // Add gases to table
+        for (size_t i = 0; i < sortedGases.size(); ++i) {
+            const GasAvailable& gas = sortedGases[i];
+            
+            // O2 Percent
+            QTableWidgetItem *o2Item = TableHelper::createNumericCell(gas.m_gas.m_o2Percent, 0, false);
+            o2Item->setData(Qt::UserRole, QVariant(m_gasRowToOriginalIndex[i])); // Store original index
+            gasesTable->setItem(i, GAS_COL_O2, o2Item);
+            
+            // He Percent
+            gasesTable->setItem(i, GAS_COL_HE, 
+                TableHelper::createNumericCell(gas.m_gas.m_hePercent, 0, false));
+            
+            // Switch Depth (m)
+            gasesTable->setItem(i, GAS_COL_SWITCH_DEPTH, 
+                TableHelper::createNumericCell(gas.m_switchDepth, 0, false));
+            
+            // Switch PpO2
+            gasesTable->setItem(i, GAS_COL_SWITCH_PPO2, 
+                TableHelper::createNumericCell(gas.m_switchPpO2, 2, false));
+            
+            // Consumption
+            gasesTable->setItem(i, GAS_COL_CONSUMPTION, 
+                TableHelper::createNumericCell(gas.m_consumption, 0, false));
+            
+            // Number of Tanks - editable
+            QTableWidgetItem *nbTanksItem = TableHelper::createNumericCell(gas.m_nbTanks, 0, true);
+            gasesTable->setItem(i, GAS_COL_NB_TANKS, nbTanksItem);
+            
+            // Tank Capacity - editable
+            QTableWidgetItem *capacityItem = TableHelper::createNumericCell(gas.m_tankCapacity, 1, true);
+            gasesTable->setItem(i, GAS_COL_TANK_CAPACITY, capacityItem);
+            
+            // Filling Pressure - editable
+            QTableWidgetItem *fillingItem = TableHelper::createNumericCell(gas.m_fillingPressure, 0, true);
+            gasesTable->setItem(i, GAS_COL_FILLING_PRESSURE, fillingItem);
+            
+            // Reserve Pressure - editable
+            QTableWidgetItem *reserveItem = TableHelper::createNumericCell(gas.m_reservePressure, 0, true);
+            gasesTable->setItem(i, GAS_COL_RESERVE_PRESSURE, reserveItem);
+            
+            // End Pressure
+            QTableWidgetItem *endItem = TableHelper::createNumericCell(gas.m_endPressure, 0, false);
+            
+            // Highlight based on pressure status
+            if (gas.m_endPressure <= 0) {
+                // Flashy red for out of gas - white text gives better contrast
+                endItem->setBackground(QBrush(QColor(255, 0, 0)));
+                endItem->setForeground(QBrush(QColor(255, 255, 255)));
+            } else if (gas.m_endPressure <= gas.m_reservePressure) {
+                // Light red for low gas (at or below reserve)
+                endItem->setBackground(QBrush(QColor(255, 200, 200)));
+            }
+            
+            gasesTable->setItem(i, GAS_COL_END_PRESSURE, endItem);
         }
-        
-        gasesTable->setItem(i, GAS_COL_END_PRESSURE, endItem);
-    }    
-    // Reconnect cell change signals - use the safer pointer-to-member syntax
-    connect(gasesTable, &QTableWidget::cellChanged, this, &DivePlanWindow::gasTableCellChanged);
+    });
     
     // Resize table columns
     resizeGasesTable();
@@ -262,16 +234,19 @@ void DivePlanWindow::updateGasTablePressures() {
             if (endItem) {
                 endItem->setText(QString::number(endPressure, 'f', 0));
                 
-                // Simple coloring approach - only change text color for dark red background
+                // Use TableHelper to highlight the cell
                 if (endPressure <= 0) {
+                    // Flashy red for out of gas - white text for contrast
                     endItem->setBackground(QBrush(QColor(255, 0, 0)));
                     endItem->setForeground(QBrush(QColor(255, 255, 255)));
                 } else if (endPressure <= gas.m_reservePressure) {
+                    // Light red for low gas (at or below reserve)
                     endItem->setBackground(QBrush(QColor(255, 200, 200)));
-                    // System default text color
+                    // Use default text color
                 } else {
+                    // Return to default styling
                     endItem->setBackground(QBrush());
-                    // Return to system default text color if we were using white
+                    // Reset foreground if it was white
                     if (endItem->foreground().color() == QColor(255, 255, 255)) {
                         endItem->setForeground(QBrush());
                     }
@@ -295,10 +270,47 @@ void DivePlanWindow::gasTableCellChanged(int row, int column) {
         QTableWidgetItem* item = gasesTable->item(row, column);
         if (!item) return;
         
-        bool ok;
-        double newValue = item->text().toDouble(&ok);
+        double newValue = 0.0;
+        QString fieldName;
+        double minValue = 0.0;
+        double maxValue = 1000.0;
         
-        if (ok) {
+        // Set field-specific validation parameters
+        switch (column) {
+            case GAS_COL_NB_TANKS:
+                fieldName = "Number of Tanks";
+                minValue = 1;
+                maxValue = 20;
+                break;
+            case GAS_COL_TANK_CAPACITY:
+                fieldName = "Tank Capacity";
+                minValue = 1.0;
+                maxValue = 50.0;
+                break;
+            case GAS_COL_FILLING_PRESSURE:
+                fieldName = "Filling Pressure";
+                minValue = 50.0;
+                maxValue = 300.0;
+                break;
+            case GAS_COL_RESERVE_PRESSURE:
+                fieldName = "Reserve Pressure";
+                minValue = 10.0;
+                maxValue = 100.0;
+                break;
+            case GAS_COL_SWITCH_DEPTH:
+                fieldName = "Switch Depth";
+                minValue = 0.0;
+                maxValue = 200.0;
+                break;
+            case GAS_COL_SWITCH_PPO2:
+                fieldName = "Switch ppO2";
+                minValue = 0.1;
+                maxValue = 2.0;
+                break;
+        }
+        
+        // Validate the input
+        if (ErrorHandler::validateNumericInput(item->text(), newValue, minValue, maxValue, fieldName)) {
             // Get the original index of the gas from the O2 column's user data
             QTableWidgetItem* o2Item = gasesTable->item(row, GAS_COL_O2);
             if (!o2Item) return;
@@ -329,16 +341,16 @@ void DivePlanWindow::gasTableCellChanged(int row, int column) {
                         break;
                     case GAS_COL_RESERVE_PRESSURE:
                         gas.m_reservePressure = newValue;
-                        // If reserve pressure changed, check against end pressure for highlighting
+                        // Update highlighting if needed
                         QTableWidgetItem* endItem = gasesTable->item(row, GAS_COL_END_PRESSURE);
                         if (endItem) {
-                            double endPressure = endItem->text().toDouble(&ok);
-                            if (ok && endPressure <= newValue && endPressure > 0) {
-                                // End pressure is at or below reserve but not empty
-                                endItem->setBackground(QBrush(QColor(255, 200, 200)));
-                            } else if (ok && endPressure > newValue) {
-                                // End pressure is above reserve, remove highlight
-                                endItem->setBackground(QBrush());
+                            double endPressure = 0.0;
+                            if (ErrorHandler::validateNumericInput(endItem->text(), endPressure, 0.0, 1000.0, "End Pressure", false)) {
+                                if (endPressure <= newValue && endPressure > 0) {
+                                    endItem->setBackground(QBrush(QColor(255, 200, 200)));
+                                } else if (endPressure > newValue) {
+                                    endItem->setBackground(QBrush());
+                                }
                             }
                         }
                         break;
@@ -347,10 +359,43 @@ void DivePlanWindow::gasTableCellChanged(int row, int column) {
                 // Update the gas table with new end pressures
                 updateGasTablePressures();
             }
+        } else {
+            // Revert to previous value if validation fails
+            QTableWidgetItem* o2Item = gasesTable->item(row, GAS_COL_O2);
+            if (!o2Item) return;
+            
+            int originalIndex = o2Item->data(Qt::UserRole).toInt();
+            
+            if (originalIndex >= 0 && originalIndex < static_cast<int>(m_divePlan->m_gasAvailable.size())) {
+                GasAvailable& gas = m_divePlan->m_gasAvailable[originalIndex];
+                
+                // Reset to original value
+                gasesTable->blockSignals(true);
+                switch (column) {
+                    case GAS_COL_SWITCH_DEPTH:
+                        item->setText(QString::number(gas.m_switchDepth, 'f', 0));
+                        break;
+                    case GAS_COL_SWITCH_PPO2:
+                        item->setText(QString::number(gas.m_switchPpO2, 'f', 2));
+                        break;
+                    case GAS_COL_NB_TANKS:
+                        item->setText(QString::number(gas.m_nbTanks));
+                        break;
+                    case GAS_COL_TANK_CAPACITY:
+                        item->setText(QString::number(gas.m_tankCapacity, 'f', 1));
+                        break;
+                    case GAS_COL_FILLING_PRESSURE:
+                        item->setText(QString::number(gas.m_fillingPressure, 'f', 0));
+                        break;
+                    case GAS_COL_RESERVE_PRESSURE:
+                        item->setText(QString::number(gas.m_reservePressure, 'f', 0));
+                        break;
+                }
+                gasesTable->blockSignals(false);
+            }
         }
     }
 }
-
 
 
 

@@ -31,7 +31,7 @@ DivePlan::DivePlan(double depth, double time, diveMode mode, int diveNumber, std
 void DivePlan::loadAvailableGases() {
     m_gasAvailable.clear();
     
-    for (const auto& gas : g_gasList.gases) {
+    for (const auto& gas : g_gasList.getGases()) {
         // Only add active gases
         if (gas.m_gasStatus == GasStatus::ACTIVE) {
             m_gasAvailable.emplace_back(gas);
@@ -97,50 +97,53 @@ void DivePlan::build(){
     m_diveProfile[0].m_ppActual = m_initialPressure;
 }
 
-void DivePlan::calculate(){
-    
-    m_firstDecoDepth = 0;
+void DivePlan::calculate() {
+    ErrorHandler::tryOperation([this]() {
+        // Guard against inconsistent state
+        if (m_diveProfile.empty()) {
+            throw std::runtime_error("Cannot calculate with empty dive profile");
+        }
 
-    // Update phase from first deco
-    updateStepsPhaseFromFirstDeco();
-    
-    // Apply gases
-    applyGases();
+        m_firstDecoDepth = 0;
 
-    // Initialise the gradient factor
-    applyGF();
+        // Update phase from first deco
+        updateStepsPhaseFromFirstDeco();
+        
+        // Apply gases
+        applyGases();
 
-    // Calculate ppInertGas for all steps
-    calculatePPInertGas();
+        // Initialise the gradient factor
+        applyGF();
 
-    // Calculate ppInertGasMax for all steps
-    calculatePPInertGasMax();
+        // Calculate ppInertGas for all steps
+        calculatePPInertGas();
 
-    // Returns the first deco stop, required for applying the GF
-    setFirstDecoDepth();
+        // Calculate ppInertGasMax for all steps
+        calculatePPInertGasMax();
 
-    // For debugging
-    m_firstDecoDepth = 45;
+        // Returns the first deco stop, required for applying the GF
+        setFirstDecoDepth();
 
-    // Apply the gradient factor to each step based on first deco stop determined
-    applyGF();
+        // Apply the gradient factor to each step based on first deco stop determined
+        applyGF();
 
-    // Calculate the pp_max values for each step adjusted for the GF
-    calculatePPInertGasMax();   
+        // Calculate the pp_max values for each step adjusted for the GF
+        calculatePPInertGasMax();   
 
-    // Update phase from first deco
-    updateStepsPhaseFromFirstDeco();
+        // Update phase from first deco
+        updateStepsPhaseFromFirstDeco();
 
-    // Re-apply gases after the first deco is found as the maxPPo2 will have changed for deco steps
-    applyGases();
+        // Re-apply gases after the first deco is found as the maxPPo2 will have changed for deco steps
+        applyGases();
 
-    // Calculate deco steps
-    calculateDecoSteps();
+        // Calculate deco steps
+        calculateDecoSteps();
 
-    // Update other variables
-    updateStepsPhaseFromFirstDeco();
-    updateVariables(100); // GF 100 for ceiling
-    updateTimeProfile();
+        // Update other variables
+        updateStepsPhaseFromFirstDeco();
+        updateVariables(100); // GF 100 for ceiling
+        updateTimeProfile();
+    }, "DivePlan::calculate", "Calculation Error");
 }
 
 void DivePlan::updateGasConsumption() {
@@ -313,9 +316,6 @@ void DivePlan::applyGases() {
             if(step.m_mode == stepMode::CC) {
                 step.m_o2Percent = std::min(m_setPoints.getSetPointAtDepth(maxDepth, m_boosted) / step.m_pAmbMax * 100.0, 100.0);
                 step.m_hePercent = (100 - step.m_o2Percent) * selectedGas->m_hePercent / (100 - selectedGas->m_o2Percent);
-                std::cout << "CC mode, o2Percent: " << step.m_o2Percent << ", hePercent: " << step.m_hePercent << std::endl;
-                std::cout << "CC mode, pAmbMax: " << step.m_pAmbMax << ", pO2Max: " << step.m_pO2Max << std::endl;
-                std::cout << "CC mode, pAmbStartDepth: " << step.m_pAmbStartDepth << ", pAmbEndDepth: " << step.m_pAmbEndDepth << std::endl;
             }
             else{
                 step.m_o2Percent = selectedGas->m_o2Percent;

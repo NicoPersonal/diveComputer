@@ -2,6 +2,7 @@
 #define SET_POINTS_HPP
 
 #include "global.hpp"
+#include "error_handler.hpp"
 
 namespace DiveComputer {
 
@@ -19,7 +20,7 @@ public:
     // File operations
     void setToDefault();
     bool loadSetPointsFromFile();
-    bool saveSetPointsToFile() const;
+    bool saveSetPointsToFile();
     void sortSetPoints();
     size_t nbOfSetPoints() const { return m_depths.size(); }
     void addSetPoint(double depth, double setpoint);

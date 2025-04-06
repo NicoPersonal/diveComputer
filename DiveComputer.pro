@@ -32,7 +32,9 @@ SOURCES += \
 
 HEADERS += \
     qtheaders.hpp \
+    error_handler.hpp \
     global.hpp \
+    table_helper.hpp \
     enum.hpp \
     constants.hpp \
     parameters.hpp \

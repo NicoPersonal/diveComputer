@@ -7,6 +7,7 @@
 #include "parameters.hpp"
 #include "enum.hpp"
 #include "ui_utils.hpp"
+#include "table_helper.hpp"
 
 namespace DiveComputer {
 

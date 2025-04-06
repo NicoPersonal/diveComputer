@@ -131,60 +131,44 @@ void DivePlanWindow::setupSetpointsTable() {
     // Set up column headers
     QStringList headers;
     headers << "Depth\n(m)" << "Setpoint\n(bar)" << "";
-    setpointsTable->setHorizontalHeaderLabels(headers);
     
-    // Configure table properties - same as stop steps table
-    setpointsTable->setSelectionBehavior(QAbstractItemView::SelectItems);
-    setpointsTable->setSelectionMode(QAbstractItemView::SingleSelection);
-    setpointsTable->setAlternatingRowColors(true);
-    setpointsTable->verticalHeader()->setVisible(false);
+    // Configure table
+    TableHelper::configureTable(setpointsTable, QAbstractItemView::SelectItems);
+    TableHelper::setHeaders(setpointsTable, headers);
     
     // Set column widths
     setpointsTable->setColumnWidth(SP_COL_DEPTH, 60);
     setpointsTable->setColumnWidth(SP_COL_SETPOINT, 60);
     setpointsTable->setColumnWidth(SP_COL_DELETE, 45);
     
-    // Set edit triggers
-    setpointsTable->setEditTriggers(QAbstractItemView::DoubleClicked | 
-                                   QAbstractItemView::SelectedClicked | 
-                                   QAbstractItemView::EditKeyPressed);
-    
-    // Connect cell change signal - use safer pointer-to-member syntax
+    // Connect cell change signal
     connect(setpointsTable, &QTableWidget::cellChanged, this, &DivePlanWindow::setpointCellChanged);
 }
 
 void DivePlanWindow::refreshSetpointsTable() {
-    // Disconnect cell change signals temporarily - use safer pointer-to-member syntax
-    disconnect(setpointsTable, &QTableWidget::cellChanged, this, &DivePlanWindow::setpointCellChanged);
-    
-    // Clear and reset the table
-    setpointsTable->clearContents();
-    setpointsTable->setRowCount(m_divePlan->m_setPoints.nbOfSetPoints());
-
-    // Add setpoints to table
-    for (int i = 0; i < (int) m_divePlan->m_setPoints.nbOfSetPoints(); ++i) {
-        // Depth item
-        QTableWidgetItem *depthItem = new QTableWidgetItem(
-            QString::number(m_divePlan->m_setPoints.m_depths[i], 'f', 1));
-        depthItem->setTextAlignment(Qt::AlignCenter);
-        setpointsTable->setItem(i, SP_COL_DEPTH, depthItem);
+    // Use the TableHelper for safe update
+    TableHelper::safeUpdate(setpointsTable, this, &DivePlanWindow::setpointCellChanged, [this]() {
+        // Set number of rows
+        setpointsTable->setRowCount(m_divePlan->m_setPoints.nbOfSetPoints());
         
-        // Setpoint item
-        QTableWidgetItem *setpointItem = new QTableWidgetItem(
-            QString::number(m_divePlan->m_setPoints.m_setPoints[i], 'f', 2));
-        setpointItem->setTextAlignment(Qt::AlignCenter);
-        setpointsTable->setItem(i, SP_COL_SETPOINT, setpointItem);
-        
-        // Delete button (except for the last row if there's only one)
-        if (m_divePlan->m_setPoints.nbOfSetPoints() > 1 || i < (int) m_divePlan->m_setPoints.nbOfSetPoints() - 1) {
-            setpointsTable->setCellWidget(i, SP_COL_DELETE, createDeleteButtonWidget([this, i]() {
-                deleteSetpoint(i);
-            }).release());
+        // Add setpoints to table
+        for (int i = 0; i < (int) m_divePlan->m_setPoints.nbOfSetPoints(); ++i) {
+            // Depth item
+            setpointsTable->setItem(i, SP_COL_DEPTH, 
+                TableHelper::createNumericCell(m_divePlan->m_setPoints.m_depths[i], 1, true));
+            
+            // Setpoint item
+            setpointsTable->setItem(i, SP_COL_SETPOINT, 
+                TableHelper::createNumericCell(m_divePlan->m_setPoints.m_setPoints[i], 2, true));
+            
+            // Delete button (except for the last row if there's only one)
+            if (m_divePlan->m_setPoints.nbOfSetPoints() > 1 || i < (int) m_divePlan->m_setPoints.nbOfSetPoints() - 1) {
+                setpointsTable->setCellWidget(i, SP_COL_DELETE, createDeleteButtonWidget([this, i]() {
+                    deleteSetpoint(i);
+                }).release());
+            }
         }
-    }
-
-    // Reconnect cell change signals - use safer pointer-to-member syntax
-    connect(setpointsTable, &QTableWidget::cellChanged, this, &DivePlanWindow::setpointCellChanged);
+    });
 }
 
-} // namespace DiveComputer
+}// namespace DiveComputer
