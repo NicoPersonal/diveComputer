@@ -342,30 +342,12 @@ void DivePlan::applyGases() {
             }
 
             // Create a gas switch step
-            DiveStep gasSwitch;
-            gasSwitch.m_startDepth = step.m_startDepth;
+            DiveStep gasSwitch = step;
             gasSwitch.m_endDepth = step.m_startDepth;
             gasSwitch.m_time = 0.01; // Minimal time
             gasSwitch.m_phase = Phase::GAS_SWITCH; 
-            gasSwitch.m_mode = step.m_mode; // Same phase as the current step
             
             // Use the gas of the current step (the new gas being switched to)
-            gasSwitch.m_o2Percent = step.m_o2Percent;
-            gasSwitch.m_hePercent = step.m_hePercent;
-            gasSwitch.m_n2Percent = 100.0 - gasSwitch.m_o2Percent - gasSwitch.m_hePercent;
-            
-            // Set ambient pressure values
-            gasSwitch.m_pAmbStartDepth = getPressureFromDepth(gasSwitch.m_startDepth);
-            gasSwitch.m_pAmbEndDepth = getPressureFromDepth(gasSwitch.m_endDepth);
-            gasSwitch.m_pAmbMax = std::max(gasSwitch.m_pAmbStartDepth, gasSwitch.m_pAmbEndDepth);
-            
-            // Calculate pO2 for the step
-            gasSwitch.m_pO2Max = (gasSwitch.m_o2Percent / 100.0) * gasSwitch.m_pAmbMax;
-            
-            // Calculate END and density values using the same gas as the current step
-            gasSwitch.m_endWithoutO2 = selectedGas->ENDWithoutO2(gasSwitch.m_startDepth);
-            gasSwitch.m_endWithO2 = selectedGas->ENDWithO2(gasSwitch.m_startDepth);
-            gasSwitch.m_gasDensity = selectedGas->Density(gasSwitch.m_startDepth);
             
             // Add the gas switch step to the updated profile
             updatedProfile.push_back(gasSwitch);
@@ -586,6 +568,8 @@ void DivePlan::updateVariables(double GF){
         m_diveProfile[i].m_pO2Max = m_diveProfile[i].m_pAmbMax * m_diveProfile[i].m_o2Percent / 100.0;
         m_diveProfile[i].m_n2Percent = 100.0 - m_diveProfile[i].m_o2Percent - m_diveProfile[i].m_hePercent;
         m_diveProfile[i].updateGFSurface(&m_diveProfile[nbOfSteps() - 1]);
+        m_diveProfile[i].updateDensity();
+        m_diveProfile[i].updateEND();
 
         if(i > 0){
             m_diveProfile[i].updateOxygenToxicity(&m_diveProfile[i - 1]);

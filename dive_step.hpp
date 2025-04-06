@@ -12,6 +12,7 @@
 #include "buhlmann.hpp"
 #include "global.hpp"
 #include "oxygen_toxicity.hpp"
+#include "gas.hpp"
 
 namespace DiveComputer {
 
@@ -83,6 +84,8 @@ public:
     void updateOxygenToxicity(DiveStep *previousStep);
     void updateConsumption();
     void updateGFSurface(DiveStep *stepSurface);
+    void updateDensity();
+    void updateEND();
     void updateRunTime(DiveStep *previousDiveStep);
 
     // Print to terminal functions
