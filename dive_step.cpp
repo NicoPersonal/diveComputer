@@ -195,13 +195,11 @@ void DiveStep::updateDensity(){
     m_gasDensity = tempGas.Density(std::max(m_startDepth, m_endDepth));
 }
 
-
 void DiveStep::updateEND(){
     Gas tempGas(m_o2Percent, m_hePercent, GasType::BOTTOM, GasStatus::ACTIVE);
     m_endWithoutO2 = tempGas.ENDWithoutO2(std::max(m_startDepth, m_endDepth));
     m_endWithO2 = tempGas.ENDWithO2(std::max(m_startDepth, m_endDepth));
 }
-
 
 void DiveStep::updateConsumption(){
         m_sacRate = 

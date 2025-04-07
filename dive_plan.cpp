@@ -109,6 +109,9 @@ void DivePlan::calculate() {
         // Update pAmb
         updatePpAmb();
 
+        // Clear deco steps
+        clearDecoSteps();
+
         // Update phase from first deco
         updateStepsPhaseFromFirstDeco();
         
@@ -149,7 +152,16 @@ void DivePlan::calculate() {
         updateStepsPhaseFromFirstDeco();
         updateVariables(100); // GF 100 for ceiling
         updateTimeProfile();
+
     }, "DivePlan::calculate", "Calculation Error");
+}
+
+void DivePlan::clearDecoSteps(){
+    for (int i = 0; i < nbOfSteps(); i++){
+        if (m_diveProfile[i].m_phase == Phase::DECO){
+            m_diveProfile[i].m_time = 0.0;
+        }
+    }
 }
 
 void DivePlan::updateGasConsumption() {
@@ -189,32 +201,98 @@ void DivePlan::defineMission() {
     // TODO: Implement
 }
 
-void DivePlan::setMaxTime() {       
-    // TODO: Implement  
+std::pair<double, double> DivePlan::getMaxTimeAndTTS() {       
+    DivePlan tempDivePlan = *this;
+    double maxTime = 0.0, maxTTS = 0.0;
+
+    // find the first STOP step
+    int firstStopIndex = 0;
+    for (int i = 1; i < nbOfSteps(); i++){
+        if (tempDivePlan.m_diveProfile[i].m_phase == Phase::STOP){
+            tempDivePlan.m_diveProfile[i].m_time = 0.0;
+            firstStopIndex = i;
+            break;
+        }
+    }
+
+    // Recalculate the dive plan
+    tempDivePlan.calculate();
+    tempDivePlan.updateGasConsumption();
+
+    // Check if 0 of bottom time is enough gas available
+    if(!tempDivePlan.enoughGasAvailable()){
+        return std::make_pair(0.0, 0.0);
+    }
+
+    // iterate the time of the bottom phase until the gas is not enough
+    while(tempDivePlan.enoughGasAvailable()){
+        tempDivePlan.m_diveProfile[firstStopIndex].m_time += g_parameters.m_timeIncrementMaxTime;
+        tempDivePlan.calculate();
+        tempDivePlan.updateGasConsumption();
+    }
+
+    maxTime = std::max(0.0, tempDivePlan.m_diveProfile[firstStopIndex].m_time - g_parameters.m_timeIncrementMaxTime);
+    maxTTS = tempDivePlan.getTTS();
+
+    // updates the stopstep for max time
+    m_stopSteps.m_stopSteps[0].m_time = maxTime;
+
+    return std::make_pair(maxTime, maxTTS);
+}
+
+bool DivePlan::enoughGasAvailable(){
+    for (auto& gas : m_gasAvailable){
+        if (gas.m_endPressure < gas.m_reservePressure){
+            return false;
+        }
+    }
+    return true;
 }
 
 void DivePlan::optimiseDecoGas() {
     // TODO: Implement
 }
 
-double DivePlan::getTTSMax(){
-    // TODO: Implement
-    return 100.0;
-}
-
 double DivePlan::getTTS(){
-    // TODO: Implement
-    return 100.0;
+    double endBottomTime = 0.0;
+    double endDiveTime = m_diveProfile[nbOfSteps() - 1].m_runTime;
+    double TTS = 0;
+
+    for (int i = 1; i < nbOfSteps(); i++){
+        if (m_diveProfile[i].m_phase == Phase::STOP){
+            endBottomTime = m_diveProfile[i].m_runTime;
+            break;
+        }
+    }
+
+    TTS = (endDiveTime - endBottomTime);
+    return TTS;
 }
 
-double DivePlan::getTTSDelta() {
-    // TODO: Implement
-    return 9.5;
+double DivePlan::getTTSDelta(double incrementTime){
+    DivePlan tempDivePlan = *this;
+
+    // find the first STOP step
+    int firstStopIndex = 0;
+    for (int i = 1; i < nbOfSteps(); i++){
+        if (tempDivePlan.m_diveProfile[i].m_phase == Phase::STOP){
+            tempDivePlan.m_diveProfile[i].m_time += incrementTime;
+            firstStopIndex = i;
+            break;
+        }
+    }
+
+    // Recalculate the dive plan
+    tempDivePlan.calculate();
+    // tempDivePlan.updateGasConsumption();
+
+    return tempDivePlan.getTTS() - getTTS();
 }
 
-double DivePlan::getTP() {
-    // TODO: Implement
-    return 105.0;
+double DivePlan::getAP() {
+    // Finish AP, update the printSummary method, and move the print summary top the widget. 
+    // Reconnect DivePlanWindow::optimiseDecoGas to only the optimize deco (currently print summaryfor debugging)
+    return 100;
 }
 
 // HELPER METHODS
@@ -240,6 +318,12 @@ void DivePlan::applyGases() {
 
     // Sort gases
     sortGases();
+
+    // Initialise the gas switch depth and ppO2
+    for (auto& gas : m_gasAvailable) {
+        gas.m_switchDepth = 0.0;
+        gas.m_switchPpO2 = 0.0;
+    }
 
     // Delete all GAS_SWITCH steps
     std::vector<DiveStep> filteredSteps;
@@ -341,8 +425,8 @@ void DivePlan::applyGases() {
             // Find the corresponding GasAvailable object
             for (auto& gasAvailable : m_gasAvailable) {
                 if (&gasAvailable.m_gas == selectedGas) {
-                    gasAvailable.m_switchDepth = step.m_startDepth;
-                    gasAvailable.m_switchPpO2 = step.m_pAmbMax * step.m_o2Percent / 100.0;
+                    gasAvailable.m_switchDepth = std::max(step.m_startDepth, gasAvailable.m_switchDepth);
+                    gasAvailable.m_switchPpO2 = std::max(step.m_pAmbMax * step.m_o2Percent / 100.0, gasAvailable.m_switchPpO2);
                     break;
                 }
             }
@@ -514,8 +598,6 @@ void DivePlan::applyGF() {
 }
 
 void DivePlan::setFirstDecoDepth() {
-    m_firstDecoDepth = 0.0;
-
     for (int i = 3; i < nbOfSteps(); i++) {
         if (m_diveProfile[i].getIfBreachingDecoLimits()) {
             m_firstDecoDepth = m_diveProfile[i - 1].m_startDepth;
@@ -724,6 +806,13 @@ void DivePlan::printO2Exposure(){
         m_diveProfile[nbOfSteps() - 1].m_otuTotal);
 }
 
+void DivePlan::printSummary(){
+    std::pair<double, double> result = getMaxTimeAndTTS();
+
+    std::cout << "TTS Target: " << getTTS() << std::endl;
+    std::cout << "TTS Max: " << result.second << " Max Time: " << result.first << std::endl;
+    std::cout << "deltaTTS +5 min: " << getTTSDelta(5) << std::endl;
+}
 
 
 } // namespace DiveComputer

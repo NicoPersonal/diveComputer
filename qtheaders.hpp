@@ -43,7 +43,7 @@
 #include <QTextBlockFormat>
 #include <QTextBlockFormat>
 #include <QScrollBar>
-#include <QTimer>
+#include <QtCore/QTimer>
 #include <QtCore/QMetaObject>
 #include <QPainter>
 #include <QPainterPath>

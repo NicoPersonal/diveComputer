@@ -309,15 +309,6 @@ void DivePlanWindow::refreshDivePlan() {
     timer.restart();
     m_divePlan->updateGasConsumption();
     qDebug() << "updateGasConsumption() took" << timer.elapsed() << "ms";
-
-    // Commented out chart update
-    // timer.restart();
-    // if (m_divePlanChart) {
-    //     updateDivePlanChart();
-    //     qDebug() << "updateDivePlanChart() took" << timer.elapsed() << "ms";
-    // }
-
-    // Refresh the gas table to reflect updated consumptions
     refreshGasesTable();
     
     timer.restart();
@@ -970,16 +961,30 @@ void DivePlanWindow::defineMission()
     qDebug() << "Define mission action triggered";
 }
 
-void DivePlanWindow::setMaxTime()
-{
-    // Placeholder for Max time functionality
-    qDebug() << "Max time action triggered";
+void DivePlanWindow::setMaxTime(){
+    std::pair<double, double> result = m_divePlan->getMaxTimeAndTTS();
+    std::cout << "Max Time: " << result.first << " Max TTS: " << result.second << std::endl;
+
+    // find the first stop step
+    int firstStopIndex = 0;
+    for (int i = 1; i < m_divePlan->nbOfSteps(); i++) {
+        if (m_divePlan->m_diveProfile[i].m_phase == Phase::STOP) {
+            firstStopIndex = i;
+            break;
+        }
+    }
+    m_divePlan->m_diveProfile[firstStopIndex].m_time = result.first;
+    m_divePlan->calculate();
+    refreshDivePlan();
+    refreshStopStepsTable();
 }
 
 void DivePlanWindow::optimiseDecoGas()
 {
     // Placeholder for Optimise a deco gas functionality
     qDebug() << "Optimise a deco gas action triggered";
+    m_divePlan->printSummary();
+    m_divePlan->optimiseDecoGas();
 }
 
 void DivePlanWindow::onWindowTitleChanged()

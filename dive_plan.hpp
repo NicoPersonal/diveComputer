@@ -63,24 +63,24 @@ public:
 
     // Action methods
     void   defineMission();
-    void   setMaxTime();
+    std::pair<double, double> getMaxTimeAndTTS();
     void   optimiseDecoGas();
-    double getTTSMax();
     double getTTS();
-    double getTTSDelta();
-    double getTP();
+    double getTTSDelta(double incrementTime);
+    double getAP();
 
     // Print-to-terminal functions
     void printPlan(std::vector<DiveStep> profile);
     void printCompartmentDetails(int compartment);
     void printGF();
     void printO2Exposure();
-
+    void printSummary();
 private:
     double m_firstDecoDepth;
 
     // Helper methods
     void   clear();
+    void   clearDecoSteps();
     void   sortGases();
     void   applyGases();
     void   calculateDecoSteps();
@@ -88,6 +88,7 @@ private:
     void   calculatePPInertGasInRange(int deco, int next_deco);
     double calculateFirstStopDepth(double maxDepth);
     void   processAscentStops(const std::vector<double>& ascentStops);
+    bool   enoughGasAvailable();
 
     DiveStep& addStep(double start_depth, double end_depth, double time, Phase phase, stepMode mode);
     DiveStep& insertStep(int index, double start_depth, double end_depth, double time, Phase phase, stepMode mode);
