@@ -106,6 +106,9 @@ void DivePlan::calculate() {
 
         m_firstDecoDepth = 0;
 
+        // Update pAmb
+        updatePpAmb();
+
         // Update phase from first deco
         updateStepsPhaseFromFirstDeco();
         
@@ -124,17 +127,20 @@ void DivePlan::calculate() {
         // Returns the first deco stop, required for applying the GF
         setFirstDecoDepth();
 
-        // Apply the gradient factor to each step based on first deco stop determined
-        applyGF();
-
-        // Calculate the pp_max values for each step adjusted for the GF
-        calculatePPInertGasMax();   
-
         // Update phase from first deco
         updateStepsPhaseFromFirstDeco();
 
         // Re-apply gases after the first deco is found as the maxPPo2 will have changed for deco steps
         applyGases();
+
+        // Re-calculate ppInertGas for all steps after re-applying the gas
+        calculatePPInertGas();
+
+        // Apply the gradient factor to each step based on first deco stop determined
+        applyGF();
+
+        // Calculate the pp_max values for each step adjusted for the GF
+        calculatePPInertGasMax();   
 
         // Calculate deco steps
         calculateDecoSteps();
@@ -344,7 +350,7 @@ void DivePlan::applyGases() {
             // Create a gas switch step
             DiveStep gasSwitch = step;
             gasSwitch.m_endDepth = step.m_startDepth;
-            gasSwitch.m_time = 0.01; // Minimal time
+            gasSwitch.m_time = 0.0; // Minimal time
             gasSwitch.m_phase = Phase::GAS_SWITCH; 
             
             // Use the gas of the current step (the new gas being switched to)
@@ -367,14 +373,45 @@ void DivePlan::applyGases() {
 
 }
 
+bool DivePlan::getIfBreachingDecoLimitsInRange(int deco, int next_deco){
+    for (int k = deco; k <= next_deco; k++){
+        if (m_diveProfile[k].getIfBreachingDecoLimits()){
+            return true;
+        }
+    }
+    return false;
+}
+
+void DivePlan::calculatePPInertGasInRange(int deco, int next_deco){
+    for (int k = deco; k <= next_deco; k++){
+        m_diveProfile[k].calculatePPInertGasForStep(m_diveProfile[k - 1], m_diveProfile[k].m_time);
+    }
+}
+
 void DivePlan::calculateDecoSteps(){
-    // TODO: Implement this
+    int deco_index = 0, next_deco_index = 0;
 
-    for (int i = 0; i < nbOfSteps(); i++){
+    for (int i = 3; i < nbOfSteps() - 1; i++){
         if (m_diveProfile[i].m_phase == Phase::DECO){
+            deco_index = i;
 
-            if(m_diveProfile[i].m_endDepth <= m_firstDecoDepth){
-                m_diveProfile[i].m_time = (m_firstDecoDepth - m_diveProfile[i].m_endDepth)/ g_parameters.m_depthIncrement + 1;
+            // look for the next deco stop
+            bool found_next_deco = false;
+            for (int j = i + 1; j < nbOfSteps(); j++){
+                if (m_diveProfile[j].m_phase == Phase::DECO){
+                    next_deco_index = j;
+                    found_next_deco = true;
+                    break;
+                }
+            }
+
+            if (!found_next_deco){
+                next_deco_index = nbOfSteps() - 1;
+            }
+
+            while(getIfBreachingDecoLimitsInRange(deco_index, next_deco_index)){
+                m_diveProfile[deco_index].m_time += g_parameters.m_timeIncrementDeco;
+                calculatePPInertGasInRange(deco_index, next_deco_index);
             }
         }
     }
@@ -477,29 +514,12 @@ void DivePlan::applyGF() {
 }
 
 void DivePlan::setFirstDecoDepth() {
-    int i = 1; // First Stop after the bottom phase
-    bool breached = false;
+    m_firstDecoDepth = 0.0;
 
-    while (i < (int) m_diveProfile.size()) {
+    for (int i = 3; i < nbOfSteps(); i++) {
         if (m_diveProfile[i].getIfBreachingDecoLimits()) {
-            std::cout << "Breached deco limits at depth " << m_diveProfile[i].m_endDepth << std::endl;
-            breached = true;
+            m_firstDecoDepth = m_diveProfile[i - 1].m_startDepth;
             break;
-        }
-        i++;
-    }
-
-    if (!breached) {
-        m_firstDecoDepth = 0.0;
-    }
-    else{
-        double depth_breached = m_diveProfile[i].m_endDepth;
-
-        for (int j = i - 1; j >= 0; j--) {
-            if (m_diveProfile[j].m_endDepth > depth_breached) {
-                m_firstDecoDepth = m_diveProfile[j].m_endDepth;
-                break;
-            }
         }
     }
 }
@@ -571,10 +591,11 @@ void DivePlan::updateVariables(double GF){
         m_diveProfile[i].updateDensity();
         m_diveProfile[i].updateEND();
 
-        if(i > 0){
+        if (i > 0){
             m_diveProfile[i].updateOxygenToxicity(&m_diveProfile[i - 1]);
             m_diveProfile[i].updateRunTime(&m_diveProfile[i - 1]);
-        }else{
+        }
+        else{
             m_diveProfile[0].m_runTime = m_diveProfile[0].m_time;
         }
     }
@@ -672,19 +693,11 @@ void DivePlan::printPlan(std::vector<DiveStep> profile){
 }
 
 void DivePlan::printCompartmentDetails(int compartment){
-    printf("| Step | Comp | Depth | P_amb |   GF  | pp_GF_n2 | pp_n2 | pp_GF_he | pp_he | pp_GF_inert | pp_inert |\n");
+    printf("| Step | Comp | Depth | P_amb |   GF  | pp_GF_n2 | pp_n2 | pp_GF_he | pp_he | pp_GF_inert | pp_inert | O2   /   He \n");
 
     for (int i = 0; i < nbOfSteps(); i++){
         m_diveProfile[i].printCompartmentDetails(i, compartment);
     }
-}
-
-void DivePlan::printStepDetails(int step){
-    printf("| Step | Comp | Depth | P_amb |   GF  | pp_GF_n2 | pp_n2 | pp_GF_he | pp_he | pp_GF_inert | pp_inert |\n");
-    
-    for (int j = 0; j < NUM_COMPARTMENTS; j++){
-        m_diveProfile[step].printStepDetails(step);
-    }  
 }
 
 void DivePlan::printGF(){

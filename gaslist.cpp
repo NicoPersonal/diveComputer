@@ -50,7 +50,7 @@ bool GasList::loadGaslistFromFile() {
         
         // Since file doesn't exist, let's add a default gas (21% O2)
         if (pImpl->gases.empty()) {
-            addGas(21.0, 0.0, GasType::BOTTOM, GasStatus::ACTIVE);
+            addGas(g_constants.m_oxygenInAir, 0.0, GasType::BOTTOM, GasStatus::ACTIVE);
         }
         
         // Save the current list to establish the file

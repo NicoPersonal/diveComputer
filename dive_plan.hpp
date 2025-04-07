@@ -73,7 +73,6 @@ public:
     // Print-to-terminal functions
     void printPlan(std::vector<DiveStep> profile);
     void printCompartmentDetails(int compartment);
-    void printStepDetails(int step);
     void printGF();
     void printO2Exposure();
 
@@ -85,6 +84,8 @@ private:
     void   sortGases();
     void   applyGases();
     void   calculateDecoSteps();
+    bool   getIfBreachingDecoLimitsInRange(int deco, int next_deco);
+    void   calculatePPInertGasInRange(int deco, int next_deco);
     double calculateFirstStopDepth(double maxDepth);
     void   processAscentStops(const std::vector<double>& ascentStops);
 
@@ -106,7 +107,6 @@ private:
     void updateConsumptions();
     void updateGFSurface();
     void updateRunTimes();
-    void updateVariablesAtOnce();
     void updateVariables(double GF);
     void updateTimeProfile();
 };

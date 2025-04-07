@@ -273,60 +273,6 @@ void DivePlanWindow::rebuildDivePlan() {
     
     isRebuilding = true;
     
-    // Log state before rebuild
-    qDebug() << "==== REBUILD DIVE PLAN - START ====";
-    qDebug() << "Before rebuild - Profile steps: " << m_divePlan->nbOfSteps();
-    
-    // Count phases before rebuild
-    int surfaceCount = 0;
-    int descentCount = 0;
-    int bottomCount = 0;
-    int decoCount = 0;
-    int ascendingCount = 0;
-    int gasSwitchCount = 0;
-    
-    qDebug() << "Step details before rebuild:";
-    for (int i = 0; i < m_divePlan->nbOfSteps(); i++) {
-        const DiveStep& step = m_divePlan->m_diveProfile[i];
-        Phase phase = step.m_phase;
-        
-        // Count phases
-        if (phase == Phase::STOP && step.m_startDepth < 0.1 && step.m_endDepth < 0.1) surfaceCount++;
-        else if (phase == Phase::DESCENDING) descentCount++;
-        else if (phase == Phase::STOP && i > 0 && m_divePlan->m_diveProfile[i-1].m_phase == Phase::DESCENDING) bottomCount++;
-        else if (phase == Phase::DECO) decoCount++;
-        else if (phase == Phase::ASCENDING) ascendingCount++;
-        else if (phase == Phase::GAS_SWITCH) gasSwitchCount++;
-        
-        qDebug() << "  Step" << i << ": Phase =" << (int)phase 
-                 << "(" << getPhaseString(phase).toStdString().c_str() << ")"
-                 << "Depth =" << step.m_startDepth 
-                 << "->" << step.m_endDepth
-                 << "Time =" << step.m_time;
-    }
-    
-    qDebug() << "Phase counts before rebuild:";
-    qDebug() << "  Surface steps:" << surfaceCount;
-    qDebug() << "  Descent steps:" << descentCount;
-    qDebug() << "  Bottom steps:" << bottomCount;
-    qDebug() << "  Deco steps:" << decoCount;
-    qDebug() << "  Ascending steps:" << ascendingCount;
-    qDebug() << "  Gas switch steps:" << gasSwitchCount;
-    
-    // Save StopSteps state before rebuild for comparison
-    int stopStepsCount = m_divePlan->m_stopSteps.nbOfStopSteps();
-    QVector<QPair<double, double>> stopStepsBefore;
-    for (int i = 0; i < stopStepsCount; i++) {
-        stopStepsBefore.append(QPair<double, double>(
-            m_divePlan->m_stopSteps.m_stopSteps[i].m_depth,
-            m_divePlan->m_stopSteps.m_stopSteps[i].m_time));
-    }
-    qDebug() << "Stop steps before rebuild:" << stopStepsCount;
-    for (int i = 0; i < stopStepsBefore.size(); i++) {
-        qDebug() << "  Stop" << i << ": Depth =" << stopStepsBefore[i].first
-                 << "Time =" << stopStepsBefore[i].second;
-    }
-    
     QElapsedTimer timer;
     timer.start();
     
@@ -334,73 +280,13 @@ void DivePlanWindow::rebuildDivePlan() {
     m_divePlan->build();
     qDebug() << "build() took" << timer.elapsed() << "ms";
     
-    // Log state after rebuild
-    qDebug() << "After rebuild - Profile steps: " << m_divePlan->nbOfSteps();
     
-    // Reset phase counters
-    surfaceCount = 0;
-    descentCount = 0;
-    bottomCount = 0;
-    decoCount = 0;
-    ascendingCount = 0;
-    gasSwitchCount = 0;
-    
-    qDebug() << "Step details after rebuild:";
-    for (int i = 0; i < m_divePlan->nbOfSteps(); i++) {
-        const DiveStep& step = m_divePlan->m_diveProfile[i];
-        Phase phase = step.m_phase;
-        
-        // Count phases
-        if (phase == Phase::STOP && step.m_startDepth < 0.1 && step.m_endDepth < 0.1) surfaceCount++;
-        else if (phase == Phase::DESCENDING) descentCount++;
-        else if (phase == Phase::STOP && i > 0 && m_divePlan->m_diveProfile[i-1].m_phase == Phase::DESCENDING) bottomCount++;
-        else if (phase == Phase::DECO) decoCount++;
-        else if (phase == Phase::ASCENDING) ascendingCount++;
-        else if (phase == Phase::GAS_SWITCH) gasSwitchCount++;
-        
-        qDebug() << "  Step" << i << ": Phase =" << (int)phase 
-                 << "(" << getPhaseString(phase).toStdString().c_str() << ")"
-                 << "Depth =" << step.m_startDepth 
-                 << "->" << step.m_endDepth
-                 << "Time =" << step.m_time;
-    }
-    
-    qDebug() << "Phase counts after rebuild:";
-    qDebug() << "  Surface steps:" << surfaceCount;
-    qDebug() << "  Descent steps:" << descentCount;
-    qDebug() << "  Bottom steps:" << bottomCount;
-    qDebug() << "  Deco steps:" << decoCount;
-    qDebug() << "  Ascending steps:" << ascendingCount;
-    qDebug() << "  Gas switch steps:" << gasSwitchCount;
-    
-    // Check StopSteps after rebuild
-    int stopStepsCountAfter = m_divePlan->m_stopSteps.nbOfStopSteps();
-    qDebug() << "Stop steps after rebuild:" << stopStepsCountAfter;
-    for (int i = 0; i < stopStepsCountAfter; i++) {
-        qDebug() << "  Stop" << i << ": Depth =" << m_divePlan->m_stopSteps.m_stopSteps[i].m_depth
-                 << "Time =" << m_divePlan->m_stopSteps.m_stopSteps[i].m_time;
-    }
-    
-    // Warnings for missing phases
-    if (descentCount == 0) {
-        qDebug() << "WARNING: No descent phase found after rebuild!";
-    }
-    
-    if (bottomCount == 0) {
-        qDebug() << "WARNING: No bottom phase found after rebuild!";
-    }
-    
-    if (surfaceCount == 0) {
-        qDebug() << "WARNING: No surface phase found after rebuild!";
-    }
-    
+    // Refresh the stopstep table
     timer.restart();
     refreshStopStepsTable();
     qDebug() << "refreshStopStepsTable() took" << timer.elapsed() << "ms";
 
     m_tableDirty = true;
-    qDebug() << "==== REBUILD DIVE PLAN - END ====";
-    
     isRebuilding = false;
 }
 

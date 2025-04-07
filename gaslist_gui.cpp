@@ -262,7 +262,7 @@ void GasListWindow::highlightENDCells() {
 
 void GasListWindow::addNewGas() {
     // Add new gas with default values
-    g_gasList.addGas(21.0, 0.0, GasType::BOTTOM, GasStatus::ACTIVE);
+    g_gasList.addGas(g_constants.m_oxygenInAir, 0.0, GasType::BOTTOM, GasStatus::ACTIVE);
     
     // Save gas list to file
     g_gasList.saveGaslistToFile();
@@ -280,7 +280,7 @@ void GasListWindow::addBestGas() {
     
     // If depth is 0 or invalid, add default 21% O2 gas
     if (depth <= 0) {
-        g_gasList.addGas(21.0, 0.0, gasType, GasStatus::ACTIVE);
+        g_gasList.addGas(g_constants.m_oxygenInAir, 0.0, gasType, GasStatus::ACTIVE);
     } else {
         // Call bestGasForDepth and add the result
         Gas bestGas = Gas::bestGasForDepth(depth, gasType);

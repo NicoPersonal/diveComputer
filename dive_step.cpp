@@ -147,15 +147,14 @@ void DiveStep::calculatePPInertGasMaxForStep(double& lastRatioN2He) {
 }
 
 bool DiveStep::getIfBreachingDecoLimits() {
-    int j = 0;
     bool breached = false;
     
-    while(!breached && (j < NUM_COMPARTMENTS)) {
-        breached = (m_ppActual[j].m_pN2 > m_ppMaxAdjustedGF[j].m_pN2) ||
+    for (int j = 0; j < NUM_COMPARTMENTS; j++){
+         breached = (m_ppActual[j].m_pN2 > m_ppMaxAdjustedGF[j].m_pN2) ||
                    (m_ppActual[j].m_pHe > m_ppMaxAdjustedGF[j].m_pHe) ||
                    (m_ppActual[j].m_pInert > m_ppMaxAdjustedGF[j].m_pInert);            
 
-        if (!breached) j++;
+        if (breached) break;
     }
 
     return breached;
@@ -249,13 +248,15 @@ void DiveStep::printStepDetails(const int step) const {
                   << std::setw(5) << m_ppMaxAdjustedGF[j].m_pHe << "| " 
                   << std::setw(5) << m_ppActual[j].m_pHe << " |        " 
                   << std::setw(5) << m_ppMaxAdjustedGF[j].m_pInert << "| " 
-                  << std::setw(5) << m_ppActual[j].m_pInert << "    |" << std::endl;
+                  << std::setw(5) << m_ppActual[j].m_pInert << "    |" 
+                  << std::setw(5) << m_o2Percent << "   /   " 
+                  << std::setw(5) << m_hePercent << std::endl;
     }
 }
 
 void DiveStep::printCompartmentDetails(const int step, const int compartment) const {
     std::cout << "|  " << std::setw(3) << step << " |  " 
-              << std::setw(3) << compartment + 1 << " |  " 
+              << std::setw(3) << compartment << " |  " 
               << std::fixed << std::setprecision(0)
               << std::setw(3) << m_endDepth << "  | " 
               << std::fixed << std::setprecision(2)
@@ -268,7 +269,9 @@ void DiveStep::printCompartmentDetails(const int step, const int compartment) co
               << std::setw(5) << m_ppMaxAdjustedGF[compartment].m_pHe << "| " 
               << std::setw(5) << m_ppActual[compartment].m_pHe << " |        " 
               << std::setw(5) << m_ppMaxAdjustedGF[compartment].m_pInert << "| " 
-              << std::setw(5) << m_ppActual[compartment].m_pInert << "    |" << std::endl;
+              << std::setw(5) << m_ppActual[compartment].m_pInert << "    |" 
+              << std::setw(5) << m_o2Percent << "   /   " 
+              << std::setw(5) << m_hePercent << std::endl;
 }
 
 }
